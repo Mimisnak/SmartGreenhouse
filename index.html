@@ -403,18 +403,23 @@
         
         async function autoDetectESP32() {
             const commonIPs = [
-                '192.168.1.100', '192.168.1.101', '192.168.1.102',
-                '192.168.0.100', '192.168.0.101', '192.168.0.102',
+                // Most common ranges for ESP32-S3
+                '192.168.1.100', '192.168.1.101', '192.168.1.102', '192.168.1.103', '192.168.1.104',
+                '192.168.0.100', '192.168.0.101', '192.168.0.102', '192.168.0.103', '192.168.0.104', 
+                '192.168.2.100', '192.168.2.101', '192.168.2.102', '192.168.2.103', '192.168.2.104', '192.168.2.105',
+                '192.168.2.110', '192.168.2.111', '192.168.2.112', '192.168.2.113', '192.168.2.114', '192.168.2.115',
+                '192.168.2.120', '192.168.2.121', '192.168.2.122', '192.168.2.123', '192.168.2.124', '192.168.2.125',
                 '192.168.4.1'  // AP mode
             ];
             
-            document.getElementById('sensor-status').textContent = 'Searching for ESP32-S3...';
+            document.getElementById('sensor-status').textContent = 'Scanning network 192.168.2.x for ESP32-S3...';
             
+            // First try common IPs quickly
             for (let ip of commonIPs) {
                 try {
                     const response = await fetch(`http://${ip}/api`, { 
                         method: 'GET',
-                        timeout: 2000 
+                        signal: AbortSignal.timeout(1500)
                     });
                     
                     if (response.ok) {
@@ -425,12 +430,40 @@
                             esp32BaseUrl = 'http://' + ip;
                             document.getElementById('offline-mode').style.display = 'none';
                             startMonitoring();
-                            alert(`ESP32-S3 found at IP: ${ip}`);
+                            alert(`✅ ESP32-S3 found at IP: ${ip}`);
                             return;
                         }
                     }
                 } catch (error) {
                     // Continue searching
+                }
+            }
+            
+            // If not found in common IPs, scan broader range
+            document.getElementById('sensor-status').textContent = 'Deep scanning 192.168.2.x range...';
+            
+            for (let i = 50; i <= 200; i++) {
+                const ip = `192.168.2.${i}`;
+                try {
+                    const response = await fetch(`http://${ip}/api`, { 
+                        method: 'GET',
+                        signal: AbortSignal.timeout(800)
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.device === 'ESP32-S3' || data.sensor === 'BMP280') {
+                            document.getElementById('esp32-ip').value = ip;
+                            localStorage.setItem('esp32-ip', ip);
+                            esp32BaseUrl = 'http://' + ip;
+                            document.getElementById('offline-mode').style.display = 'none';
+                            startMonitoring();
+                            alert(`✅ ESP32-S3 found at IP: ${ip}`);
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    // Continue scanning
                 }
             }
             

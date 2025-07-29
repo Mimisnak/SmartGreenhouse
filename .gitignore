@@ -1,0 +1,63 @@
+# PlatformIO
+.pio/
+.pioenvs/
+.piolibdeps/
+.vscode/.browse.c_cpp.db*
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.vscode/ipch/
+
+# VS Code
+.vscode/settings.json
+
+# Operating System
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Build artifacts
+*.bin
+*.elf
+*.hex
+
+# WiFi credentials (if stored in separate file)
+credentials.h
+wifi_config.h
+
+# Personal notes
+notes.txt
+TODO.md
+
+# Backup files
+*.bak
+*.backup
+
+# Windows
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Linux
+*~
+
+# IDE
+*.swp
+*.swo
+.idea/
+*.sublime-*
+
+# Python (if any scripts)
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local testing
+test_data/
+local_config/

@@ -4,7 +4,13 @@
     <title>🌱 SmartGreenhouse - ESP32-S3 Remote Monitor</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="data:image/svg+xml,<svg xm            <div class="input-group">
+    <link rel="icon" href="data:image/svg+xml,<svg xm                      <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 8px; font-size: 12px; color: #856404;">
+                <strong>📡 Remote Access Status:</strong><br>
+                • <strong>Local Network:</strong> <code>192.168.2.19</code> ✅ Working<br>
+                • <strong>Remote Access:</strong> <code>46.176.29.7:8082</code> ⚠️ Testing...<br>
+                • <strong>Port Forward Rule:</strong> External 8082 → Internal 192.168.2.19:80<br>
+                <small>� May need router restart or firewall check</small>
+            </div>class="input-group">
                 <label for="esp32-ip">ESP32-S3 IP Address:</label>
                 <input type="text" id="esp32-ip" placeholder="e.g. 192.168.2.19 or 46.176.29.7:8080" value="">
             </div>%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
@@ -266,25 +272,23 @@
             <div style="margin-top: 15px; padding: 10px; background: #e8f4fd; border-radius: 8px; font-size: 12px; color: #0c5460;">
                 <strong>📡 Remote Access Setup:</strong><br>
                 • <strong>Local Network:</strong> <code>192.168.2.19</code><br>
-                • <strong>Remote Access:</strong> <code>46.176.29.7:8080</code> (requires port forwarding)<br>
-                • <strong>Port Forward Rule:</strong> External 8080 → Internal 192.168.2.19:80<br>
-                <small>💡 Configure in your Vodafone router: Network → Port Forwarding</small>
+                • <strong>Remote Access:</strong> <code>46.176.29.7:8081</code> ✅ (port forwarding active)<br>
+                • <strong>Port Forward Rule:</strong> External 8081 → Internal 192.168.2.19:80<br>
+                <small>� Configured and active in Vodafone router</small>
             </div>
         </div>
         
-        <div class="connection-setup" style="background: #f8f9fa; border-left: 5px solid #6c757d;">
-            <h3>🌐 Router Configuration Guide</h3>
+        <div class="connection-setup" style="background: #fff3cd; border-left: 5px solid #ffc107;">
+            <h3>🔧 Troubleshooting Remote Access</h3>
             <div style="font-size: 14px; line-height: 1.6;">
-                <strong>For Vodafone Router:</strong><br>
-                1. 📡 Go to <strong>Network</strong> → <strong>Port Forwarding</strong><br>
-                2. ➕ Add new rule:<br>
-                   • <strong>Service Name:</strong> ESP32-S3<br>
-                   • <strong>External Port:</strong> 8080<br>
-                   • <strong>Internal IP:</strong> 192.168.2.19<br>
-                   • <strong>Internal Port:</strong> 80<br>
-                   • <strong>Protocol:</strong> TCP<br>
-                3. ✅ Save and Enable the rule<br>
-                4. 🔄 Test with: <code>46.176.29.7:8080</code>
+                <strong>If remote access doesn't work:</strong><br>
+                1. � <strong>Restart your Vodafone router</strong> (unplug 30sec)<br>
+                2. 🛡️ Check <strong>Firewall</strong> settings - allow TCP 8082<br>
+                3. 📱 Test from <strong>mobile data</strong> (not same WiFi)<br>
+                4. 🔍 Try different ports: 8083, 9080, 7080<br>
+                5. ⏱️ Wait 5-10 minutes after router changes<br>
+                <br>
+                <strong>Current Status:</strong> Local ✅ | Remote ⚠️
             </div>
         </div>
         
@@ -419,7 +423,7 @@
             
             // Support for different formats:
             // 192.168.2.19
-            // 46.176.29.7:8080 (with port forwarding)
+            // 46.176.29.7:8082 (with port forwarding)
             // http://mydomain.com:8080
             
             // Add http:// if not present

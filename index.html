@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🌱 SmartGreenhouse - ESP32-S3 Remote Monitor</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 15px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        .connection-setup {
+            background: #e8f4fd;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 12px;
+            border-left: 5px solid #2196F3;
+        }
+        .reading { 
+            background: linear-gradient(45deg, #f1f8ff, #e8f4fd); 
+            padding: 20px; 
+            margin: 15px 0; 
+            border-radius: 12px; 
+            border-left: 5px solid #2196F3;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .temp { 
+            font-size: 32px; 
+            color: #ff6b35; 
+            font-weight: bold;
+            text-align: center;
+        }
+        .pressure { 
+            font-size: 24px; 
+            color: #4caf50; 
+            font-weight: bold;
+            text-align: center;
+        }
+        .status { 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin: 15px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+        .status.ok { 
+            background: #d4edda; 
+            color: #155724; 
+            border: 2px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 2px solid #f5c6cb;
+        }
+        .status.connecting {
+            background: #fff3cd;
+            color: #856404;
+            border: 2px solid #ffeaa7;
+        }
+        .stats-section {
+            margin-top: 25px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 1px solid #dee2e6;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .stat-item {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2196F3;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        .wifi-status {
+            font-size: 14px;
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .wifi-connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        .wifi-disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .footer { 
+            text-align: center; 
+            margin-top: 30px; 
+            color: #666;
+            font-size: 14px;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .info-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+        .disconnected-notice {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            display: none;
+        }
+        .auto-refresh-info {
+            margin-top: 15px;
+            padding: 8px;
+            background: #e8f4fd;
+            border: 1px solid #bee5eb;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 12px;
+            color: #0c5460;
+        }
+        .persistent-info {
+            margin-top: 15px;
+            padding: 10px;
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            color: #155724;
+            text-align: center;
+            font-size: 12px;
+        }
+        .input-group {
+            margin: 10px 0;
+        }
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .input-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .connect-button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        .connect-button:hover {
+            background: #0056b3;
+        }
+        .reset-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+        .reset-button:hover {
+            background: #c82333;
+        }
+        .offline-mode {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            text-align: center;
+            color: #856404;
+        }
+        .hero-section {
+            background: linear-gradient(45deg, #4CAF50, #2196F3);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+        }
+        .hero-section h2 {
+            margin: 0 0 15px 0;
+            font-size: 24px;
+        }
+        .hero-section p {
+            margin: 0;
+            font-size: 16px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="hero-section">
+            <h1>🌱 SmartGreenhouse</h1>
+            <h2>ESP32-S3 IoT Temperature Monitor</h2>
+            <p>Real-time monitoring with persistent statistics and remote access</p>
+        </div>
+        
+        <div class="connection-setup">
+            <h3>🔗 Connect to ESP32-S3</h3>
+            <div class="input-group">
+                <label for="esp32-ip">ESP32-S3 IP Address:</label>
+                <input type="text" id="esp32-ip" placeholder="e.g. 192.168.1.100" value="">
+            </div>
+            <button class="connect-button" onclick="connectToESP32()">Connect</button>
+            <button class="connect-button" onclick="autoDetectESP32()" style="background: #28a745;">Auto-Detect</button>
+        </div>
+        
+        <div class="offline-mode" id="offline-mode" style="display: block;">
+            🌐 <strong>Standalone Mode:</strong> This page works independently from ESP32-S3!<br>
+            You can save it or host it on GitHub Pages for remote monitoring.
+        </div>
+        
+        <div class="reading">
+            <div class="temp">🌡️ <span id="temp">--</span> °C</div>
+        </div>
+        
+        <div class="reading">
+            <div class="pressure">🌬️ <span id="pressure">--</span> hPa</div>
+        </div>
+        
+        <div class="disconnected-notice" id="disconnected-notice">
+            ⚠️ ESP32-S3 is disconnected or powered off
+        </div>
+        
+        <div id="status" class="status connecting">
+            📡 Status: <span id="sensor-status">Waiting for connection...</span>
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-item">
+                <strong>⏱️ Last Update</strong><br>
+                <span id="lastUpdate">--</span>
+            </div>
+            <div class="info-item">
+                <strong>🚀 Uptime</strong><br>
+                <span id="uptime">--</span>
+            </div>
+        </div>
+        
+        <div class="wifi-status" id="wifi-status">
+            📶 ESP32-S3: <span id="wifi-text">Not connected</span>
+        </div>
+        
+        <div class="stats-section">
+            <h3 style="margin: 0 0 15px 0; color: #333;">📊 Measurement Statistics</h3>
+            
+            <!-- Daily Statistics -->
+            <div style="margin-bottom: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border: 1px solid #ffeaa7;">
+                <h4 style="margin: 0 0 10px 0; color: #856404;">🗓️ Daily Statistics (<span id="daily-date">--</span>)</h4>
+                <div class="stats-grid">
+                    <div class="stat-item" style="background: #fff8e1;">
+                        <div class="stat-value" id="daily-min-temp" style="color: #f57c00;">--</div>
+                        <div class="stat-label">🔽 Daily Min °C</div>
+                    </div>
+                    <div class="stat-item" style="background: #fff8e1;">
+                        <div class="stat-value" id="daily-max-temp" style="color: #f57c00;">--</div>
+                        <div class="stat-label">🔺 Daily Max °C</div>
+                    </div>
+                    <div class="stat-item" style="background: #fff8e1;">
+                        <div class="stat-value" id="daily-avg-temp" style="color: #f57c00;">--</div>
+                        <div class="stat-label">📊 Daily Avg °C</div>
+                    </div>
+                    <div class="stat-item" style="background: #fff8e1;">
+                        <div class="stat-value" id="daily-reading-count" style="color: #f57c00;">--</div>
+                        <div class="stat-label">🔢 Daily Readings</div>
+                    </div>
+                </div>
+                <div style="margin-top: 10px; text-align: center; font-size: 12px; color: #856404;">
+                    ⏰ Time left: <span id="daily-time-left">--</span> until reset (24h)
+                </div>
+            </div>
+            
+            <!-- Total Statistics -->
+            <div style="margin-bottom: 15px; padding: 10px; background: #e8f4fd; border-radius: 8px;">
+                <h4 style="margin: 0 0 10px 0; color: #2196F3;">📈 Total Statistics</h4>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="min-temp">--</div>
+                        <div class="stat-label">🔽 Total Min °C</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="max-temp">--</div>
+                        <div class="stat-label">🔺 Total Max °C</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="avg-temp">--</div>
+                        <div class="stat-label">📊 Total Avg °C</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="reading-count">--</div>
+                        <div class="stat-label">🔢 Total Readings</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="persistent-info">
+                💾 This page works independently! Can be hosted on GitHub Pages.
+            </div>
+            <div class="auto-refresh-info">
+                🔄 Auto-refresh every 3 seconds when connected
+            </div>
+            <button class="reset-button" onclick="resetStats()">🗑 Reset Statistics</button>
+        </div>
+        
+        <div class="footer">
+            <p><strong>ESP32-S3 N16R8</strong> | <strong>BMP280 Sensor</strong></p>
+            <p>🌱 SmartGreenhouse Project - Remote monitoring everywhere!</p>
+            <p><a href="https://github.com/Mimisnak/SmartGreenhouse" target="_blank" style="color: #666;">View on GitHub</a></p>
+        </div>
+    </div>
+
+    <script>
+        let esp32BaseUrl = '';
+        let isConnected = false;
+        let connectionAttempts = 0;
+        const maxReconnectAttempts = 3;
+        let updateInterval;
+        
+        // Load saved IP from localStorage
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedIP = localStorage.getItem('esp32-ip');
+            if (savedIP) {
+                document.getElementById('esp32-ip').value = savedIP;
+                esp32BaseUrl = 'http://' + savedIP;
+                document.getElementById('offline-mode').style.display = 'none';
+                startMonitoring();
+            }
+        });
+        
+        function connectToESP32() {
+            const ip = document.getElementById('esp32-ip').value.trim();
+            if (!ip) {
+                alert('Please enter the ESP32-S3 IP address');
+                return;
+            }
+            
+            // Save IP to localStorage
+            localStorage.setItem('esp32-ip', ip);
+            esp32BaseUrl = 'http://' + ip;
+            
+            // Hide offline mode
+            document.getElementById('offline-mode').style.display = 'none';
+            
+            // Start monitoring
+            startMonitoring();
+        }
+        
+        async function autoDetectESP32() {
+            const commonIPs = [
+                '192.168.1.100', '192.168.1.101', '192.168.1.102',
+                '192.168.0.100', '192.168.0.101', '192.168.0.102',
+                '192.168.4.1'  // AP mode
+            ];
+            
+            document.getElementById('sensor-status').textContent = 'Searching for ESP32-S3...';
+            
+            for (let ip of commonIPs) {
+                try {
+                    const response = await fetch(`http://${ip}/api`, { 
+                        method: 'GET',
+                        timeout: 2000 
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.device === 'ESP32-S3' || data.sensor === 'BMP280') {
+                            document.getElementById('esp32-ip').value = ip;
+                            localStorage.setItem('esp32-ip', ip);
+                            esp32BaseUrl = 'http://' + ip;
+                            document.getElementById('offline-mode').style.display = 'none';
+                            startMonitoring();
+                            alert(`ESP32-S3 found at IP: ${ip}`);
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    // Continue searching
+                }
+            }
+            
+            alert('ESP32-S3 not found. Please enter IP manually.');
+            document.getElementById('sensor-status').textContent = 'ESP32-S3 not found';
+        }
+        
+        function startMonitoring() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+            
+            updateData(); // Initial call
+            updateInterval = setInterval(updateData, 3000); // Every 3 seconds
+        }
+        
+        async function updateData() {
+            if (!esp32BaseUrl) return;
+            
+            try {
+                const response = await fetch(esp32BaseUrl + '/api', {
+                    method: 'GET',
+                    timeout: 5000
+                });
+                
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const data = await response.json();
+                connectionAttempts = 0;
+                isConnected = true;
+                
+                // Hide disconnected notice
+                document.getElementById('disconnected-notice').style.display = 'none';
+                
+                // Update all data
+                updateUIWithData(data);
+                
+            } catch (error) {
+                console.error('Connection error:', error);
+                connectionAttempts++;
+                
+                if (connectionAttempts === 1) {
+                    isConnected = false;
+                    showDisconnectedState();
+                }
+                
+                if (connectionAttempts >= maxReconnectAttempts) {
+                    showOfflineState();
+                }
+            }
+        }
+        
+        function updateUIWithData(data) {
+            // Update temperature and pressure
+            document.getElementById('temp').textContent = data.temperature.toFixed(2);
+            document.getElementById('pressure').textContent = data.pressure.toFixed(2);
+            
+            // Update uptime
+            const hours = Math.floor(data.uptime / 3600);
+            const minutes = Math.floor((data.uptime % 3600) / 60);
+            const seconds = data.uptime % 60;
+            document.getElementById('uptime').textContent = 
+                `${hours}h ${minutes}m ${seconds}s`;
+            
+            // Update last update time
+            document.getElementById('lastUpdate').textContent = 
+                new Date().toLocaleTimeString();
+            
+            // Update status
+            const statusDiv = document.getElementById('status');
+            const statusSpan = document.getElementById('sensor-status');
+            if (data.sensor_status === 'OK') {
+                statusDiv.className = 'status ok';
+                statusSpan.textContent = 'Connected ✅';
+            } else {
+                statusDiv.className = 'status error';
+                statusSpan.textContent = 'Sensor Error';
+            }
+            
+            // Update Wi-Fi status
+            const wifiText = document.getElementById('wifi-text');
+            if (data.wifi_connected) {
+                document.getElementById('wifi-status').className = 'wifi-status wifi-connected';
+                wifiText.textContent = `Connected (${data.wifi_rssi || 'N/A'} dBm)`;
+            } else {
+                document.getElementById('wifi-status').className = 'wifi-status wifi-disconnected';
+                wifiText.textContent = 'Wi-Fi Disconnected';
+            }
+            
+            // Update statistics
+            if (data.reading_count > 0) {
+                document.getElementById('min-temp').textContent = data.min_temp.toFixed(2);
+                document.getElementById('max-temp').textContent = data.max_temp.toFixed(2);
+                document.getElementById('avg-temp').textContent = data.avg_temp.toFixed(2);
+                document.getElementById('reading-count').textContent = data.reading_count;
+            }
+            
+            // Update daily statistics
+            if (data.daily_reading_count > 0) {
+                document.getElementById('daily-min-temp').textContent = data.daily_min_temp.toFixed(2);
+                document.getElementById('daily-max-temp').textContent = data.daily_max_temp.toFixed(2);
+                document.getElementById('daily-avg-temp').textContent = data.daily_avg_temp.toFixed(2);
+                document.getElementById('daily-reading-count').textContent = data.daily_reading_count;
+                document.getElementById('daily-date').textContent = data.daily_date || '--';
+                
+                const hoursLeft = data.daily_time_left_hours || 0;
+                const minutesLeft = data.daily_time_left_minutes || 0;
+                document.getElementById('daily-time-left').textContent = `${hoursLeft}h ${minutesLeft}m`;
+            } else {
+                document.getElementById('daily-date').textContent = data.daily_date || '--';
+                document.getElementById('daily-time-left').textContent = '24h 0m';
+            }
+        }
+        
+        function showDisconnectedState() {
+            document.getElementById('disconnected-notice').style.display = 'block';
+            document.getElementById('sensor-status').textContent = 'Disconnected...';
+            document.getElementById('status').className = 'status error';
+            document.getElementById('wifi-text').textContent = 'Attempting reconnection...';
+        }
+        
+        function showOfflineState() {
+            // Set all values to dashes
+            const dashElements = ['temp', 'pressure', 'uptime', 'lastUpdate', 
+                                'min-temp', 'max-temp', 'avg-temp', 'reading-count',
+                                'daily-min-temp', 'daily-max-temp', 'daily-avg-temp', 
+                                'daily-reading-count', 'daily-date', 'daily-time-left'];
+            
+            dashElements.forEach(id => {
+                document.getElementById(id).textContent = '--';
+            });
+            
+            document.getElementById('sensor-status').textContent = 'Offline ❌';
+            document.getElementById('status').className = 'status error';
+            document.getElementById('wifi-text').textContent = 'ESP32-S3 powered off';
+            document.getElementById('offline-mode').style.display = 'block';
+        }
+        
+        async function resetStats() {
+            if (!esp32BaseUrl || !isConnected) {
+                alert('Must be connected to ESP32-S3 to reset statistics');
+                return;
+            }
+            
+            if (confirm('Are you sure you want to reset all statistics?')) {
+                try {
+                    const response = await fetch(esp32BaseUrl + '/reset');
+                    if (response.ok) {
+                        alert('Statistics reset successfully!');
+                        updateData(); // Refresh display
+                    } else {
+                        alert('Error resetting statistics');
+                    }
+                } catch (error) {
+                    alert('Connection error');
+                }
+            }
+        }
+        
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden && esp32BaseUrl) {
+                updateData();
+            }
+        });
+    </script>
+</body>
+</html>

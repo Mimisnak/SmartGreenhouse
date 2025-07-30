@@ -4,16 +4,7 @@
     <title>🌱 SmartGreenhouse - ESP32-S3 Remote Monitor</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="data:image/svg+xml,<svg xm                      <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-radius: 8px; font-size: 12px; color: #856404;">
-                <strong>📡 Remote Access Status:</strong><br>
-                • <strong>Local Network:</strong> <code>192.168.2.19</code> ✅ Working<br>
-                • <strong>Remote Access:</strong> <code>46.176.29.7:8082</code> ⚠️ Testing...<br>
-                • <strong>Port Forward Rule:</strong> External 8082 → Internal 192.168.2.19:80<br>
-                <small>� May need router restart or firewall check</small>
-            </div>class="input-group">
-                <label for="esp32-ip">ESP32-S3 IP Address:</label>
-                <input type="text" id="esp32-ip" placeholder="e.g. 192.168.2.19 or 46.176.29.7:8080" value="">
-            </div>%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌱</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -250,6 +241,13 @@
             font-size: 16px;
             opacity: 0.9;
         }
+        .success-box {
+            background: #d4edda;
+            border-left: 5px solid #28a745;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 12px;
+        }
     </style>
 </head>
 <body>
@@ -260,41 +258,40 @@
             <p>Real-time monitoring with persistent statistics and remote access</p>
         </div>
         
-        <div class="connection-setup">
-            <h3>🔗 Connect to ESP32-S3</h3>
-            <div class="input-group">
-                <label for="esp32-ip">ESP32-S3 IP Address:</label>
-                <input type="text" id="esp32-ip" placeholder="e.g. 192.168.2.19 or 46.176.29.7:8080" value="">
-            </div>
-            <button class="connect-button" onclick="connectToESP32()">Connect</button>
-            <button class="connect-button" onclick="autoDetectESP32()" style="background: #28a745;">Auto-Detect</button>
-            
-            <div style="margin-top: 15px; padding: 10px; background: #e8f4fd; border-radius: 8px; font-size: 12px; color: #0c5460;">
-                <strong>📡 Remote Access Setup:</strong><br>
-                • <strong>Local Network:</strong> <code>192.168.2.19</code><br>
-                • <strong>Remote Access:</strong> <code>46.176.29.7:8081</code> ✅ (port forwarding active)<br>
-                • <strong>Port Forward Rule:</strong> External 8081 → Internal 192.168.2.19:80<br>
-                <small>� Configured and active in Vodafone router</small>
+        <div class="success-box">
+            <h3>🌍 ΕΠΙΤΥΧΙΑ! ΕΧΕΙΣ ΑΠΟΜΑΚΡΥΣΜΕΝΗ ΠΡΟΣΒΑΣΗ!</h3>
+            <div style="font-size: 14px; line-height: 1.6;">
+                <strong>� ΑΠΟΜΑΚΡΥΣΜΕΝΑ (από οπουδήποτε στον κόσμο):</strong><br>
+                • Βάλε URL: <code>f57d7fa1c5d3.ngrok-free.app</code><br>
+                • Πάτησε Connect ή Auto-Detect!<br>
+                <br>
+                <strong>� ΤΟΠΙΚΑ (ίδιο δίκτυο):</strong><br>
+                • Βάλε IP: <code>192.168.2.19</code><br>
+                • Πάτησε Connect ή Auto-Detect<br>
+                <br>
+                <strong>💡 Τώρα δουλεύει από ΠΑΝΤΟΥ! 🌍</strong>
             </div>
         </div>
         
-        <div class="connection-setup" style="background: #fff3cd; border-left: 5px solid #ffc107;">
-            <h3>🔧 Troubleshooting Remote Access</h3>
-            <div style="font-size: 14px; line-height: 1.6;">
-                <strong>If remote access doesn't work:</strong><br>
-                1. � <strong>Restart your Vodafone router</strong> (unplug 30sec)<br>
-                2. 🛡️ Check <strong>Firewall</strong> settings - allow TCP 8082<br>
-                3. 📱 Test from <strong>mobile data</strong> (not same WiFi)<br>
-                4. 🔍 Try different ports: 8083, 9080, 7080<br>
-                5. ⏱️ Wait 5-10 minutes after router changes<br>
-                <br>
-                <strong>Current Status:</strong> Local ✅ | Remote ⚠️
+        <div class="connection-setup">
+            <h3>🔗 Connect to ESP32-S3</h3>
+            <div class="input-group">
+                <label for="esp32-ip">ESP32-S3 Address:</label>
+                <input type="text" id="esp32-ip" placeholder="f57d7fa1c5d3.ngrok-free.app or 192.168.2.19" value="">
+            </div>
+            <button class="connect-button" onclick="connectToESP32()">Connect</button>
+            <button class="connect-button" onclick="autoDetectESP32()" style="background: #28a745;">Auto-Detect</button>
+            <button class="connect-button" onclick="downloadPage()" style="background: #17a2b8;">💾 Download για τοπική χρήση</button>
+            
+            <div style="margin-top: 15px; padding: 10px; background: #d4edda; border-radius: 8px; font-size: 12px; color: #155724;">
+                <strong>🌍 ΑΠΟΜΑΚΡΥΣΜΕΝΗ ΠΡΟΣΒΑΣΗ ΕΝΕΡΓΗ!</strong><br>
+                • <strong>Local Network:</strong> <code>192.168.2.19</code> ✅ ESP32-S3 WORKING<br>
+                • <strong>🚀 Global Access:</strong> <code>https://f57d7fa1c5d3.ngrok-free.app</code> ✅ LIVE!<br>
             </div>
         </div>
         
         <div class="offline-mode" id="offline-mode" style="display: block;">
-            🌐 <strong>Standalone Mode:</strong> This page works independently from ESP32-S3!<br>
-            You can save it or host it on GitHub Pages for remote monitoring.
+            🌐 <strong>Standalone Mode:</strong> Πάτησε "Download" και άνοιξε το αρχείο τοπικά!
         </div>
         
         <div class="reading">
@@ -381,7 +378,7 @@
             </div>
             
             <div class="persistent-info">
-                💾 This page works independently! Can be hosted on GitHub Pages.
+                💾 Κατέβασε αυτή τη σελίδα για τοπική χρήση!
             </div>
             <div class="auto-refresh-info">
                 🔄 Auto-refresh every 3 seconds when connected
@@ -417,24 +414,24 @@
         function connectToESP32() {
             let ip = document.getElementById('esp32-ip').value.trim();
             if (!ip) {
-                alert('Παρακαλώ εισάγετε το ESP32-S3 IP address ή URL');
+                alert('Παρακαλώ εισάγετε το ESP32-S3 IP address ή ngrok URL');
                 return;
             }
             
-            // Support for different formats:
-            // 192.168.2.19
-            // 46.176.29.7:8082 (with port forwarding)
-            // http://mydomain.com:8080
-            
-            // Add http:// if not present
-            if (!ip.startsWith('http://') && !ip.startsWith('https://')) {
-                ip = 'http://' + ip;
+            // Auto-detect protocol
+            let fullUrl;
+            if (ip.startsWith('http://') || ip.startsWith('https://')) {
+                fullUrl = ip;
+            } else if (ip.includes('ngrok')) {
+                fullUrl = 'https://' + ip;
+            } else {
+                fullUrl = 'http://' + ip;
             }
             
             // Save IP to localStorage
             const cleanIP = ip.replace(/^https?:\/\//, '');
             localStorage.setItem('esp32-ip', cleanIP);
-            esp32BaseUrl = ip;
+            esp32BaseUrl = fullUrl;
             
             // Show connecting status
             document.getElementById('sensor-status').textContent = `Συνδέεται στο ${cleanIP}...`;
@@ -448,23 +445,18 @@
         
         async function autoDetectESP32() {
             const commonIPs = [
-                // Most common ranges for ESP32-S3
-                '192.168.1.100', '192.168.1.101', '192.168.1.102', '192.168.1.103', '192.168.1.104',
-                '192.168.0.100', '192.168.0.101', '192.168.0.102', '192.168.0.103', '192.168.0.104', 
-                '192.168.2.100', '192.168.2.101', '192.168.2.102', '192.168.2.103', '192.168.2.104', '192.168.2.105',
-                '192.168.2.110', '192.168.2.111', '192.168.2.112', '192.168.2.113', '192.168.2.114', '192.168.2.115',
-                '192.168.2.120', '192.168.2.121', '192.168.2.122', '192.168.2.123', '192.168.2.124', '192.168.2.125',
-                '192.168.4.1'  // AP mode
+                'f57d7fa1c5d3.ngrok-free.app', '192.168.2.19', '192.168.2.100', '192.168.2.101', '192.168.2.102',
+                '192.168.1.100', '192.168.1.101', '192.168.0.100', '192.168.4.1'
             ];
             
-            document.getElementById('sensor-status').textContent = 'Scanning network 192.168.2.x for ESP32-S3...';
+            document.getElementById('sensor-status').textContent = 'Scanning for ESP32-S3...';
             
-            // First try common IPs quickly
             for (let ip of commonIPs) {
                 try {
-                    const response = await fetch(`http://${ip}/api`, { 
+                    const protocol = ip.includes('ngrok') ? 'https://' : 'http://';
+                    const response = await fetch(`${protocol}${ip}/api`, { 
                         method: 'GET',
-                        signal: AbortSignal.timeout(1500)
+                        signal: AbortSignal.timeout(3000)
                     });
                     
                     if (response.ok) {
@@ -472,10 +464,10 @@
                         if (data.device === 'ESP32-S3' || data.sensor === 'BMP280') {
                             document.getElementById('esp32-ip').value = ip;
                             localStorage.setItem('esp32-ip', ip);
-                            esp32BaseUrl = 'http://' + ip;
+                            esp32BaseUrl = protocol + ip;
                             document.getElementById('offline-mode').style.display = 'none';
                             startMonitoring();
-                            alert(`✅ ESP32-S3 found at IP: ${ip}`);
+                            alert(`✅ ESP32-S3 found at: ${protocol}${ip}`);
                             return;
                         }
                     }
@@ -484,36 +476,22 @@
                 }
             }
             
-            // If not found in common IPs, scan broader range
-            document.getElementById('sensor-status').textContent = 'Deep scanning 192.168.2.x range...';
-            
-            for (let i = 50; i <= 200; i++) {
-                const ip = `192.168.2.${i}`;
-                try {
-                    const response = await fetch(`http://${ip}/api`, { 
-                        method: 'GET',
-                        signal: AbortSignal.timeout(800)
-                    });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.device === 'ESP32-S3' || data.sensor === 'BMP280') {
-                            document.getElementById('esp32-ip').value = ip;
-                            localStorage.setItem('esp32-ip', ip);
-                            esp32BaseUrl = 'http://' + ip;
-                            document.getElementById('offline-mode').style.display = 'none';
-                            startMonitoring();
-                            alert(`✅ ESP32-S3 found at IP: ${ip}`);
-                            return;
-                        }
-                    }
-                } catch (error) {
-                    // Continue scanning
-                }
-            }
-            
-            alert('ESP32-S3 not found. Please enter IP manually.');
+            alert('ESP32-S3 not found. Please enter URL manually.');
             document.getElementById('sensor-status').textContent = 'ESP32-S3 not found';
+        }
+        
+        function downloadPage() {
+            const htmlContent = document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'smartgreenhouse-monitor.html';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            alert('📁 Αρχείο κατεβάηκε! Άνοιξέ το με Chrome/Firefox στο τοπικό δίκτυο.');
         }
         
         function startMonitoring() {

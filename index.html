@@ -167,8 +167,8 @@
                 <h4 style="color: #155724; margin: 0 0 10px 0;">📡 Current Status:</h4>
                 <div style="font-size: 14px; color: #155724;">
                     <div>• <strong>Local Network:</strong> 192.168.2.19 ✅ Working</div>
-                    <div>• <strong>Remote Access:</strong> 46.176.29.7:8082 🧪 Ready to test</div>
-                    <div>• <strong>Port Forward:</strong> External 8082 → Internal 192.168.2.19:80</div>
+                    <div>• <strong>Remote Access:</strong> 46.176.29.7:8083 ✅ Port forwarding configured!</div>
+                    <div>• <strong>Port Forward:</strong> External 8083 → Internal 192.168.2.19:80</div>
                 </div>
             </div>
             
@@ -180,7 +180,7 @@
             
             <div class="input-group">
                 <label for="portInput">🔌 External Port:</label>
-                <input type="number" id="portInput" placeholder="π.χ. 8080" value="8082">
+                <input type="number" id="portInput" placeholder="π.χ. 8080" value="8083">
                 <div class="help-text">Η εξωτερική πόρτα που έχεις ρυθμίσει στο router</div>
             </div>
             
@@ -195,7 +195,7 @@
                 <li><strong>Port Forwarding:</strong> Βρες το Port Forwarding/Virtual Server</li>
                 <li><strong>Νέος Κανόνας:</strong>
                     <ul>
-                        <li>External Port: 8082 (η πόρτα σου)</li>
+                        <li>External Port: 8083 (η πόρτα σου)</li>
                         <li>Internal IP: 192.168.2.19</li>
                         <li>Internal Port: 80</li>
                         <li>Protocol: TCP</li>
@@ -319,7 +319,7 @@
             statusDiv.innerHTML = '🧪 Testing connection...';
 
             try {
-                const url = `http://${esp32Host}:${esp32Port}/data`;
+                const url = `http://${esp32Host}:${esp32Port}/api`;
                 const response = await fetch(url, { 
                     method: 'GET',
                     mode: 'cors',
@@ -361,7 +361,7 @@
             connectBtn.innerHTML = '⏳ Σύνδεση...';
 
             try {
-                const url = `http://${esp32Host}:${esp32Port}/data`;
+                const url = `http://${esp32Host}:${esp32Port}/api`;
                 const response = await fetch(url);
                 
                 if (!response.ok) {
@@ -418,7 +418,7 @@
                 if (!isConnected) return;
                 
                 try {
-                    const url = `http://${esp32Host}:${esp32Port}/data`;
+                    const url = `http://${esp32Host}:${esp32Port}/api`;
                     const response = await fetch(url);
                     
                     if (response.ok) {

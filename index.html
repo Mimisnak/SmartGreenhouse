@@ -3,8 +3,40 @@
 <head>
     <title>🌱 SmartGreenhouse - Remote Monitor</title>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">        <div class="instructions">
+            <h4>🔧 Troubleshooting Remote Access:</h4>
+            <div style="background: #fff3cd; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                <strong>📱 If mobile data doesn't work:</strong><br>
+                1. Try different ports: <strong>8080, 8888, 9090</strong><br>
+                2. Check if public IP changed: <a href="https://whatismyipaddress.com" target="_blank">whatismyipaddress.com</a><br>
+                3. Some mobile carriers block custom ports
+            </div>
+            <div style="background: #e2e3e5; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                <strong>🔄 Alternative Ports to try:</strong><br>
+                • Port 8080: http://46.176.29.7:8080<br>
+                • Port 8888: http://46.176.29.7:8888<br>
+                • Port 9090: http://46.176.29.7:9090
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h4>⚠️ ΣΗΜΑΝΤΙΚΟ: Πώς να συνδεθείς στο ESP32-S3:</h4>
+            <div style="background: #d4edda; padding: 15px; border-radius: 8px; margin: 10px 0; font-size: 16px;">
+                <strong>✅ ΜΟΝΑΔΙΚΟΣ ΤΡΟΠΟΣ ΠΟΥ ΔΟΥΛΕΥΕΙ:</strong><br>
+                1️⃣ Βάλε τα στοιχεία σου (IP: 46.176.29.7, Port: 8083)<br>
+                2️⃣ Πάτα "💾 Αποθήκευση Ρυθμίσεων"<br>
+                3️⃣ Πάτα "🌐 Direct Access - WORKS!" 👈 <strong>ΑΥΤΟ ΔΟΥΛΕΥΕΙ!</strong><br>
+                <br>
+                <em>Θα ανοίξει νέα καρτέλα με το ESP32-S3!</em>
+            </div>
+            <div style="background: #f8d7da; padding: 15px; border-radius: 8px; margin: 10px 0;">
+                <strong>❌ Γιατί το "🚫 CORS Blocked" δεν δουλεύει:</strong><br>
+                • GitHub Pages χρησιμοποιεί HTTPS (ασφαλής)<br>
+                • ESP32-S3 χρησιμοποιεί HTTP (μη ασφαλής)<br>
+                • Τα browsers μπλοκάρουν HTTPS → HTTP για ασφάλεια<br>
+                <strong>Γι' αυτό ΜΗΝ πατάς το γκρι κουμπί!</strong>
+            </div>
+        </div>el="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -221,8 +253,11 @@
         </div>
         
         <div style="text-align: center; margin: 20px 0;">
-            <button class="connect-button" onclick="connectToESP32()" id="connectBtn" style="background: #6c757d; cursor: not-allowed;" disabled>🚫 CORS Blocked</button>
-            <button class="connect-button" onclick="openInNewTab()" id="openBtn" style="background: #28a745;">🌐 Direct Access - WORKS!</button>
+            <button class="connect-button" onclick="connectToESP32()" id="connectBtn" style="background: #6c757d; cursor: not-allowed; opacity: 0.5;" disabled>🚫 CORS Blocked - ΜΗ ΠΑΤΑΣ!</button>
+            <br>
+            <button class="connect-button" onclick="openInNewTab()" id="openBtn" style="background: #28a745; font-size: 18px; padding: 20px 40px;">🌐 Direct Access - ΠΑΤΑ ΕΔΩ!</button>
+            <br>
+            <small style="color: #28a745; font-weight: bold;">👆 Αυτό το κουμπί θα σε πάει στο ESP32-S3!</small>
         </div>
         
         <div id="statusDiv" class="status connecting" style="display: none;">

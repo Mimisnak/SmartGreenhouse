@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>🌱 SmartGreenhouse - ESP32-S3 Remote Monitor</title>
+    <title>🌱 SmartGreenhouse - Remote Monitor</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
@@ -14,642 +14,447 @@
             min-height: 100vh;
         }
         .container { 
-            max-width: 600px; 
+            max-width: 700px; 
             margin: 0 auto; 
             background: white; 
             padding: 30px; 
             border-radius: 15px; 
             box-shadow: 0 4px 20px rgba(0,0,0,0.15);
         }
-        h1 {
-            text-align: center;
-            color: #333;
-            margin-bottom: 30px;
-            font-size: 28px;
+        .header { 
+            text-align: center; 
+            background: linear-gradient(135deg, #28a745, #20c997); 
+            color: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            margin-bottom: 25px; 
         }
-        .connection-setup {
-            background: #e8f4fd;
-            padding: 20px;
-            margin: 15px 0;
-            border-radius: 12px;
-            border-left: 5px solid #2196F3;
+        .config-section { 
+            background: #fff3cd; 
+            border: 2px solid #ffc107; 
+            padding: 20px; 
+            border-radius: 10px; 
+            margin: 20px 0; 
         }
         .reading { 
-            background: linear-gradient(45deg, #f1f8ff, #e8f4fd); 
+            background: #f8f9fa; 
             padding: 20px; 
             margin: 15px 0; 
-            border-radius: 12px; 
-            border-left: 5px solid #2196F3;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 10px; 
+            border-left: 5px solid #007bff; 
         }
         .temp { 
-            font-size: 32px; 
+            font-size: 36px; 
             color: #ff6b35; 
-            font-weight: bold;
-            text-align: center;
+            font-weight: bold; 
+            text-align: center; 
         }
         .pressure { 
-            font-size: 24px; 
+            font-size: 28px; 
             color: #4caf50; 
-            font-weight: bold;
-            text-align: center;
+            font-weight: bold; 
+            text-align: center; 
         }
         .status { 
             padding: 15px; 
             border-radius: 8px; 
-            margin: 15px 0;
-            text-align: center;
-            font-weight: bold;
+            margin: 15px 0; 
+            text-align: center; 
+            font-weight: bold; 
         }
         .status.ok { 
             background: #d4edda; 
             color: #155724; 
-            border: 2px solid #c3e6cb;
+            border: 2px solid #c3e6cb; 
         }
-        .status.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 2px solid #f5c6cb;
+        .status.error { 
+            background: #f8d7da; 
+            color: #721c24; 
+            border: 2px solid #f5c6cb; 
         }
-        .status.connecting {
-            background: #fff3cd;
-            color: #856404;
-            border: 2px solid #ffeaa7;
+        .status.connecting { 
+            background: #d1ecf1; 
+            color: #0c5460; 
+            border: 2px solid #bee5eb; 
         }
-        .stats-section {
-            margin-top: 25px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 12px;
-            border: 1px solid #dee2e6;
+        .connect-button { 
+            background: #28a745; 
+            color: white; 
+            padding: 15px 30px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 16px; 
+            margin: 10px; 
         }
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
+        .connect-button:hover { background: #218838; }
+        .connect-button:disabled { background: #6c757d; cursor: not-allowed; }
+        .config-button { 
+            background: #ffc107; 
+            color: #212529; 
+            padding: 10px 20px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 14px; 
+            margin: 5px; 
         }
-        .stat-item {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-            border: 1px solid #dee2e6;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        .stats { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+            gap: 15px; 
+            margin: 20px 0; 
         }
-        .stat-value {
-            font-size: 20px;
-            font-weight: bold;
-            color: #2196F3;
-        }
-        .stat-label {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-        .wifi-status {
-            font-size: 14px;
-            margin-top: 10px;
-            padding: 8px;
-            border-radius: 5px;
-            text-align: center;
-        }
-        .wifi-connected {
-            background: #d4edda;
-            color: #155724;
-        }
-        .wifi-disconnected {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        .footer { 
+        .stat-item { 
+            background: #e8f4fd; 
+            padding: 15px; 
+            border-radius: 8px; 
             text-align: center; 
-            margin-top: 30px; 
-            color: #666;
-            font-size: 14px;
         }
-        .info-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 20px;
+        .stat-value { 
+            font-size: 24px; 
+            font-weight: bold; 
+            color: #007bff; 
         }
-        .info-item {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            text-align: center;
-            border: 1px solid #dee2e6;
+        .stat-label { 
+            font-size: 12px; 
+            color: #666; 
+            margin-top: 5px; 
         }
-        .disconnected-notice {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 8px;
-            text-align: center;
-            font-weight: bold;
-            display: none;
+        .input-group { 
+            margin: 10px 0; 
         }
-        .auto-refresh-info {
-            margin-top: 15px;
-            padding: 8px;
-            background: #e8f4fd;
-            border: 1px solid #bee5eb;
-            border-radius: 8px;
-            text-align: center;
-            font-size: 12px;
-            color: #0c5460;
+        .input-group label { 
+            display: block; 
+            font-weight: bold; 
+            margin-bottom: 5px; 
         }
-        .persistent-info {
-            margin-top: 15px;
-            padding: 10px;
-            background: #d4edda;
-            border: 1px solid #c3e6cb;
-            border-radius: 8px;
-            color: #155724;
-            text-align: center;
-            font-size: 12px;
+        .input-group input { 
+            width: 100%; 
+            padding: 10px; 
+            border: 2px solid #ddd; 
+            border-radius: 6px; 
+            font-size: 14px; 
         }
-        .input-group {
-            margin: 10px 0;
+        .help-text { 
+            font-size: 12px; 
+            color: #666; 
+            margin-top: 5px; 
         }
-        .input-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: bold;
+        .instructions { 
+            background: #e7f3ff; 
+            border: 2px solid #007bff; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin: 20px 0; 
         }
-        .input-group input {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            box-sizing: border-box;
-        }
-        .connect-button {
-            background: #007bff;
-            color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 14px;
-            margin: 5px;
-        }
-        .connect-button:hover {
-            background: #0056b3;
-        }
-        .reset-button {
-            margin-top: 20px;
-            padding: 10px 20px;
-            background: #dc3545;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background 0.3s;
-        }
-        .reset-button:hover {
-            background: #c82333;
-        }
-        .offline-mode {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            padding: 15px;
-            margin: 15px 0;
-            border-radius: 8px;
-            text-align: center;
-            color: #856404;
-        }
-        .hero-section {
-            background: linear-gradient(45deg, #4CAF50, #2196F3);
-            color: white;
-            padding: 30px;
-            border-radius: 15px;
-            margin-bottom: 30px;
-            text-align: center;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-        }
-        .hero-section h2 {
-            margin: 0 0 15px 0;
-            font-size: 24px;
-        }
-        .hero-section p {
-            margin: 0;
-            font-size: 16px;
-            opacity: 0.9;
-        }
-        .success-box {
-            background: #d4edda;
-            border-left: 5px solid #28a745;
-            padding: 20px;
-            margin: 15px 0;
-            border-radius: 12px;
-        }
+        .instructions h4 { color: #007bff; margin-top: 0; }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="hero-section">
+        <div class="header">
             <h1>🌱 SmartGreenhouse</h1>
-            <h2>ESP32-S3 IoT Temperature Monitor</h2>
-            <p>Real-time monitoring with persistent statistics and remote access</p>
+            <h2>📡 Remote Temperature Monitoring</h2>
+            <p>Powered by ESP32-S3 + BMP280 + GitHub Pages</p>
         </div>
-        
-        <div class="success-box">
-            <h3>🌍 ΕΠΙΤΥΧΙΑ! ΕΧΕΙΣ ΑΠΟΜΑΚΡΥΣΜΕΝΗ ΠΡΟΣΒΑΣΗ!</h3>
-            <div style="font-size: 14px; line-height: 1.6;">
-                <strong>� ΑΠΟΜΑΚΡΥΣΜΕΝΑ (από οπουδήποτε στον κόσμο):</strong><br>
-                • Βάλε URL: <code>f57d7fa1c5d3.ngrok-free.app</code><br>
-                • Πάτησε Connect ή Auto-Detect!<br>
-                <br>
-                <strong>� ΤΟΠΙΚΑ (ίδιο δίκτυο):</strong><br>
-                • Βάλε IP: <code>192.168.2.19</code><br>
-                • Πάτησε Connect ή Auto-Detect<br>
-                <br>
-                <strong>💡 Τώρα δουλεύει από ΠΑΝΤΟΥ! 🌍</strong>
-            </div>
-        </div>
-        
-        <div class="connection-setup">
-            <h3>🔗 Connect to ESP32-S3</h3>
+
+        <div class="config-section">
+            <h3>🔧 Ρύθμιση Σύνδεσης</h3>
+            <p><strong>⚠️ ΣΗΜΑΝΤΙΚΟ:</strong> Πρέπει να ρυθμίσεις το router σου για port forwarding!</p>
+            
             <div class="input-group">
-                <label for="esp32-ip">ESP32-S3 Address:</label>
-                <input type="text" id="esp32-ip" placeholder="f57d7fa1c5d3.ngrok-free.app or 192.168.2.19" value="">
+                <label for="hostInput">🌐 Public IP/Domain:</label>
+                <input type="text" id="hostInput" placeholder="π.χ. your-public-ip.com ή 123.456.789.123" value="">
+                <div class="help-text">Το δημόσιο IP ή domain name του router σου</div>
             </div>
-            <button class="connect-button" onclick="connectToESP32()">Connect</button>
-            <button class="connect-button" onclick="autoDetectESP32()" style="background: #28a745;">Auto-Detect</button>
-            <button class="connect-button" onclick="downloadPage()" style="background: #17a2b8;">💾 Download για τοπική χρήση</button>
             
-            <div style="margin-top: 15px; padding: 10px; background: #d4edda; border-radius: 8px; font-size: 12px; color: #155724;">
-                <strong>🌍 ΑΠΟΜΑΚΡΥΣΜΕΝΗ ΠΡΟΣΒΑΣΗ ΕΝΕΡΓΗ!</strong><br>
-                • <strong>Local Network:</strong> <code>192.168.2.19</code> ✅ ESP32-S3 WORKING<br>
-                • <strong>🚀 Global Access:</strong> <code>https://f57d7fa1c5d3.ngrok-free.app</code> ✅ LIVE!<br>
+            <div class="input-group">
+                <label for="portInput">🔌 External Port:</label>
+                <input type="number" id="portInput" placeholder="π.χ. 8080" value="8080">
+                <div class="help-text">Η εξωτερική πόρτα που έχεις ρυθμίσει στο router</div>
             </div>
-        </div>
-        
-        <div class="offline-mode" id="offline-mode" style="display: block;">
-            🌐 <strong>Standalone Mode:</strong> Πάτησε "Download" και άνοιξε το αρχείο τοπικά!
-        </div>
-        
-        <div class="reading">
-            <div class="temp">🌡️ <span id="temp">--</span> °C</div>
-        </div>
-        
-        <div class="reading">
-            <div class="pressure">🌬️ <span id="pressure">--</span> hPa</div>
-        </div>
-        
-        <div class="disconnected-notice" id="disconnected-notice">
-            ⚠️ ESP32-S3 is disconnected or powered off
-        </div>
-        
-        <div id="status" class="status connecting">
-            📡 Status: <span id="sensor-status">Waiting for connection...</span>
-        </div>
-        
-        <div class="info-grid">
-            <div class="info-item">
-                <strong>⏱️ Last Update</strong><br>
-                <span id="lastUpdate">--</span>
-            </div>
-            <div class="info-item">
-                <strong>🚀 Uptime</strong><br>
-                <span id="uptime">--</span>
-            </div>
-        </div>
-        
-        <div class="wifi-status" id="wifi-status">
-            📶 ESP32-S3: <span id="wifi-text">Not connected</span>
-        </div>
-        
-        <div class="stats-section">
-            <h3 style="margin: 0 0 15px 0; color: #333;">📊 Measurement Statistics</h3>
             
-            <!-- Daily Statistics -->
-            <div style="margin-bottom: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border: 1px solid #ffeaa7;">
-                <h4 style="margin: 0 0 10px 0; color: #856404;">🗓️ Daily Statistics (<span id="daily-date">--</span>)</h4>
-                <div class="stats-grid">
-                    <div class="stat-item" style="background: #fff8e1;">
-                        <div class="stat-value" id="daily-min-temp" style="color: #f57c00;">--</div>
-                        <div class="stat-label">🔽 Daily Min °C</div>
-                    </div>
-                    <div class="stat-item" style="background: #fff8e1;">
-                        <div class="stat-value" id="daily-max-temp" style="color: #f57c00;">--</div>
-                        <div class="stat-label">🔺 Daily Max °C</div>
-                    </div>
-                    <div class="stat-item" style="background: #fff8e1;">
-                        <div class="stat-value" id="daily-avg-temp" style="color: #f57c00;">--</div>
-                        <div class="stat-label">📊 Daily Avg °C</div>
-                    </div>
-                    <div class="stat-item" style="background: #fff8e1;">
-                        <div class="stat-value" id="daily-reading-count" style="color: #f57c00;">--</div>
-                        <div class="stat-label">🔢 Daily Readings</div>
-                    </div>
+            <button class="config-button" onclick="saveConfig()">💾 Αποθήκευση Ρυθμίσεων</button>
+            <button class="config-button" onclick="testConnection()">🧪 Test Connection</button>
+        </div>
+
+        <div class="instructions">
+            <h4>📋 Οδηγίες Port Forwarding:</h4>
+            <ol>
+                <li><strong>Router Admin:</strong> Μπες στο 192.168.1.1 (ή 192.168.2.1)</li>
+                <li><strong>Port Forwarding:</strong> Βρες το Port Forwarding/Virtual Server</li>
+                <li><strong>Νέος Κανόνας:</strong>
+                    <ul>
+                        <li>External Port: 8080 (ή άλλη πόρτα)</li>
+                        <li>Internal IP: 192.168.2.19</li>
+                        <li>Internal Port: 80</li>
+                        <li>Protocol: TCP</li>
+                    </ul>
+                </li>
+                <li><strong>Public IP:</strong> Δες το public IP σου στο <a href="https://whatismyipaddress.com/" target="_blank">whatismyipaddress.com</a></li>
+            </ol>
+        </div>
+        
+        <div style="text-align: center; margin: 20px 0;">
+            <button class="connect-button" onclick="connectToESP32()" id="connectBtn">🔗 Σύνδεση στο ESP32-S3</button>
+            <button class="connect-button" onclick="openInNewTab()" id="openBtn" style="background: #007bff;">🌐 Άνοιγμα σε νέα καρτέλα</button>
+        </div>
+        
+        <div id="statusDiv" class="status connecting" style="display: none;">
+            🔄 Προσπάθεια σύνδεσης...
+        </div>
+        
+        <div id="dataDiv" style="display: none;">
+            <div class="reading">
+                <div class="temp" id="temperature">--°C</div>
+                <div style="text-align: center; color: #666; margin: 10px 0;">Θερμοκρασία</div>
+            </div>
+            
+            <div class="reading">
+                <div class="pressure" id="pressure">-- hPa</div>
+                <div style="text-align: center; color: #666; margin: 10px 0;">Ατμοσφαιρική Πίεση</div>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="lastUpdate">--</div>
+                    <div class="stat-label">Τελευταία Ενημέρωση</div>
                 </div>
-                <div style="margin-top: 10px; text-align: center; font-size: 12px; color: #856404;">
-                    ⏰ Time left: <span id="daily-time-left">--</span> until reset (24h)
+                <div class="stat-item">
+                    <div class="stat-value" id="connectionStatus">Αποσυνδεδεμένο</div>
+                    <div class="stat-label">Κατάσταση</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="totalReadings">0</div>
+                    <div class="stat-label">Συνολικές Μετρήσεις</div>
                 </div>
             </div>
-            
-            <!-- Total Statistics -->
-            <div style="margin-bottom: 15px; padding: 10px; background: #e8f4fd; border-radius: 8px;">
-                <h4 style="margin: 0 0 10px 0; color: #2196F3;">📈 Total Statistics</h4>
-                <div class="stats-grid">
-                    <div class="stat-item">
-                        <div class="stat-value" id="min-temp">--</div>
-                        <div class="stat-label">🔽 Total Min °C</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="max-temp">--</div>
-                        <div class="stat-label">🔺 Total Max °C</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="avg-temp">--</div>
-                        <div class="stat-label">📊 Total Avg °C</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="reading-count">--</div>
-                        <div class="stat-label">🔢 Total Readings</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="persistent-info">
-                💾 Κατέβασε αυτή τη σελίδα για τοπική χρήση!
-            </div>
-            <div class="auto-refresh-info">
-                🔄 Auto-refresh every 3 seconds when connected
-            </div>
-            <button class="reset-button" onclick="resetStats()">🗑 Reset Statistics</button>
         </div>
         
-        <div class="footer">
-            <p><strong>ESP32-S3 N16R8</strong> | <strong>BMP280 Sensor</strong></p>
-            <p>🌱 SmartGreenhouse Project - Remote monitoring everywhere!</p>
-            <p><a href="https://github.com/Mimisnak/SmartGreenhouse" target="_blank" style="color: #666;">View on GitHub</a></p>
+        <div style="margin-top: 30px; text-align: center; font-size: 12px; color: #666;">
+            <p>🚀 Powered by ESP32-S3 | 📡 Hosted on GitHub Pages</p>
+            <p>Last updated: <span id="pageLoadTime"></span></p>
         </div>
     </div>
 
     <script>
-        let esp32BaseUrl = '';
+        let esp32Host = '';
+        let esp32Port = 8080;
         let isConnected = false;
-        let connectionAttempts = 0;
-        const maxReconnectAttempts = 3;
+        let totalReadings = 0;
         let updateInterval;
-        
-        // Load saved IP from localStorage
-        document.addEventListener('DOMContentLoaded', function() {
-            const savedIP = localStorage.getItem('esp32-ip');
-            if (savedIP) {
-                document.getElementById('esp32-ip').value = savedIP;
-                esp32BaseUrl = 'http://' + savedIP;
-                document.getElementById('offline-mode').style.display = 'none';
-                startMonitoring();
+
+        // Load saved configuration
+        function loadConfig() {
+            const savedHost = localStorage.getItem('esp32_host');
+            const savedPort = localStorage.getItem('esp32_port');
+            
+            if (savedHost) {
+                document.getElementById('hostInput').value = savedHost;
+                esp32Host = savedHost;
             }
-        });
-        
-        function connectToESP32() {
-            let ip = document.getElementById('esp32-ip').value.trim();
-            if (!ip) {
-                alert('Παρακαλώ εισάγετε το ESP32-S3 IP address ή ngrok URL');
+            
+            if (savedPort) {
+                document.getElementById('portInput').value = savedPort;
+                esp32Port = parseInt(savedPort);
+            }
+            
+            updateConnectionUrl();
+        }
+
+        // Save configuration
+        function saveConfig() {
+            const host = document.getElementById('hostInput').value.trim();
+            const port = parseInt(document.getElementById('portInput').value);
+            
+            if (!host) {
+                alert('⚠️ Παρακαλώ εισάγετε το Public IP ή Domain!');
                 return;
             }
             
-            // Auto-detect protocol
-            let fullUrl;
-            if (ip.startsWith('http://') || ip.startsWith('https://')) {
-                fullUrl = ip;
-            } else if (ip.includes('ngrok')) {
-                fullUrl = 'https://' + ip;
-            } else {
-                fullUrl = 'http://' + ip;
+            if (!port || port < 1 || port > 65535) {
+                alert('⚠️ Παρακαλώ εισάγετε έγκυρη πόρτα (1-65535)!');
+                return;
             }
             
-            // Save IP to localStorage
-            const cleanIP = ip.replace(/^https?:\/\//, '');
-            localStorage.setItem('esp32-ip', cleanIP);
-            esp32BaseUrl = fullUrl;
+            esp32Host = host;
+            esp32Port = port;
             
-            // Show connecting status
-            document.getElementById('sensor-status').textContent = `Συνδέεται στο ${cleanIP}...`;
+            localStorage.setItem('esp32_host', host);
+            localStorage.setItem('esp32_port', port.toString());
             
-            // Hide offline mode
-            document.getElementById('offline-mode').style.display = 'none';
+            updateConnectionUrl();
             
-            // Start monitoring
-            startMonitoring();
+            alert('✅ Ρυθμίσεις αποθηκεύτηκαν!');
         }
-        
-        async function autoDetectESP32() {
-            const commonIPs = [
-                'f57d7fa1c5d3.ngrok-free.app', '192.168.2.19', '192.168.2.100', '192.168.2.101', '192.168.2.102',
-                '192.168.1.100', '192.168.1.101', '192.168.0.100', '192.168.4.1'
-            ];
-            
-            document.getElementById('sensor-status').textContent = 'Scanning for ESP32-S3...';
-            
-            for (let ip of commonIPs) {
-                try {
-                    const protocol = ip.includes('ngrok') ? 'https://' : 'http://';
-                    const response = await fetch(`${protocol}${ip}/api`, { 
-                        method: 'GET',
-                        signal: AbortSignal.timeout(3000)
-                    });
-                    
-                    if (response.ok) {
-                        const data = await response.json();
-                        if (data.device === 'ESP32-S3' || data.sensor === 'BMP280') {
-                            document.getElementById('esp32-ip').value = ip;
-                            localStorage.setItem('esp32-ip', ip);
-                            esp32BaseUrl = protocol + ip;
-                            document.getElementById('offline-mode').style.display = 'none';
-                            startMonitoring();
-                            alert(`✅ ESP32-S3 found at: ${protocol}${ip}`);
-                            return;
-                        }
-                    }
-                } catch (error) {
-                    // Continue searching
+
+        // Update connection URL display
+        function updateConnectionUrl() {
+            if (esp32Host && esp32Port) {
+                const url = `http://${esp32Host}:${esp32Port}`;
+                document.getElementById('openBtn').onclick = () => window.open(url, '_blank');
+            }
+        }
+
+        // Test connection
+        async function testConnection() {
+            if (!esp32Host || !esp32Port) {
+                alert('⚠️ Παρακαλώ ρυθμίστε πρώτα το Host και Port!');
+                return;
+            }
+
+            const statusDiv = document.getElementById('statusDiv');
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status connecting';
+            statusDiv.innerHTML = '🧪 Testing connection...';
+
+            try {
+                const url = `http://${esp32Host}:${esp32Port}/data`;
+                const response = await fetch(url, { 
+                    method: 'GET',
+                    mode: 'cors',
+                    timeout: 10000 
+                });
+                
+                if (response.ok) {
+                    statusDiv.className = 'status ok';
+                    statusDiv.innerHTML = '✅ Connection successful! Ready to connect.';
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
                 }
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = `❌ Connection failed: ${error.message}<br>
+                    <small>Βεβαιωθείτε ότι:<br>
+                    • Το ESP32-S3 είναι ανοιχτό<br>
+                    • Το port forwarding είναι ρυθμισμένο<br>
+                    • Το public IP είναι σωστό</small>`;
             }
+        }
+
+        // Connect to ESP32-S3
+        async function connectToESP32() {
+            if (!esp32Host || !esp32Port) {
+                alert('⚠️ Παρακαλώ ρυθμίστε πρώτα το Host και Port!');
+                return;
+            }
+
+            const statusDiv = document.getElementById('statusDiv');
+            const connectBtn = document.getElementById('connectBtn');
+            const dataDiv = document.getElementById('dataDiv');
             
-            alert('ESP32-S3 not found. Please enter URL manually.');
-            document.getElementById('sensor-status').textContent = 'ESP32-S3 not found';
+            statusDiv.style.display = 'block';
+            statusDiv.className = 'status connecting';
+            statusDiv.innerHTML = '🔄 Συνδέομαι με το ESP32-S3...';
+            
+            connectBtn.disabled = true;
+            connectBtn.innerHTML = '⏳ Σύνδεση...';
+
+            try {
+                const url = `http://${esp32Host}:${esp32Port}/data`;
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                // Success!
+                isConnected = true;
+                statusDiv.className = 'status ok';
+                statusDiv.innerHTML = '✅ Συνδέθηκε επιτυχώς!';
+                
+                dataDiv.style.display = 'block';
+                
+                // Update data
+                updateSensorData(data);
+                
+                // Start auto-refresh
+                startAutoRefresh();
+                
+                connectBtn.innerHTML = '🔄 Ανανέωση Δεδομένων';
+                connectBtn.disabled = false;
+                
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = `❌ Σφάλμα σύνδεσης: ${error.message}<br>
+                    <small>Ελέγξτε το port forwarding και το public IP</small>`;
+                
+                connectBtn.innerHTML = '🔗 Προσπάθεια Ξανά';
+                connectBtn.disabled = false;
+                isConnected = false;
+            }
         }
-        
-        function downloadPage() {
-            const htmlContent = document.documentElement.outerHTML;
-            const blob = new Blob([htmlContent], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'smartgreenhouse-monitor.html';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            alert('📁 Αρχείο κατεβάηκε! Άνοιξέ το με Chrome/Firefox στο τοπικό δίκτυο.');
+
+        // Update sensor data display
+        function updateSensorData(data) {
+            document.getElementById('temperature').textContent = `${data.temperature}°C`;
+            document.getElementById('pressure').textContent = `${data.pressure} hPa`;
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+            document.getElementById('connectionStatus').textContent = 'Συνδεδεμένο';
+            
+            totalReadings++;
+            document.getElementById('totalReadings').textContent = totalReadings;
         }
-        
-        function startMonitoring() {
+
+        // Start auto-refresh
+        function startAutoRefresh() {
             if (updateInterval) {
                 clearInterval(updateInterval);
             }
             
-            updateData(); // Initial call
-            updateInterval = setInterval(updateData, 3000); // Every 3 seconds
-        }
-        
-        async function updateData() {
-            if (!esp32BaseUrl) return;
-            
-            try {
-                const response = await fetch(esp32BaseUrl + '/api', {
-                    method: 'GET',
-                    timeout: 5000
-                });
+            updateInterval = setInterval(async () => {
+                if (!isConnected) return;
                 
-                if (!response.ok) throw new Error('Network response was not ok');
-                
-                const data = await response.json();
-                connectionAttempts = 0;
-                isConnected = true;
-                
-                // Hide disconnected notice
-                document.getElementById('disconnected-notice').style.display = 'none';
-                
-                // Update all data
-                updateUIWithData(data);
-                
-            } catch (error) {
-                console.error('Connection error:', error);
-                connectionAttempts++;
-                
-                if (connectionAttempts === 1) {
+                try {
+                    const url = `http://${esp32Host}:${esp32Port}/data`;
+                    const response = await fetch(url);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        updateSensorData(data);
+                        
+                        // Update status
+                        const statusDiv = document.getElementById('statusDiv');
+                        statusDiv.className = 'status ok';
+                        statusDiv.innerHTML = '✅ Συνδεδεμένο - Αυτόματη ανανέωση κάθε 5 δευτερόλεπτα';
+                    } else {
+                        throw new Error('Connection lost');
+                    }
+                } catch (error) {
+                    document.getElementById('connectionStatus').textContent = 'Αποσυνδεδεμένο';
+                    const statusDiv = document.getElementById('statusDiv');
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = '❌ Χάθηκε η σύνδεση - Δοκιμάστε ξανά';
                     isConnected = false;
-                    showDisconnectedState();
+                    clearInterval(updateInterval);
                 }
-                
-                if (connectionAttempts >= maxReconnectAttempts) {
-                    showOfflineState();
-                }
-            }
+            }, 5000); // Update every 5 seconds
         }
-        
-        function updateUIWithData(data) {
-            // Update temperature and pressure
-            document.getElementById('temp').textContent = data.temperature.toFixed(2);
-            document.getElementById('pressure').textContent = data.pressure.toFixed(2);
-            
-            // Update uptime
-            const hours = Math.floor(data.uptime / 3600);
-            const minutes = Math.floor((data.uptime % 3600) / 60);
-            const seconds = data.uptime % 60;
-            document.getElementById('uptime').textContent = 
-                `${hours}h ${minutes}m ${seconds}s`;
-            
-            // Update last update time
-            document.getElementById('lastUpdate').textContent = 
-                new Date().toLocaleTimeString();
-            
-            // Update status
-            const statusDiv = document.getElementById('status');
-            const statusSpan = document.getElementById('sensor-status');
-            if (data.sensor_status === 'OK') {
-                statusDiv.className = 'status ok';
-                statusSpan.textContent = 'Connected ✅';
-            } else {
-                statusDiv.className = 'status error';
-                statusSpan.textContent = 'Sensor Error';
-            }
-            
-            // Update Wi-Fi status
-            const wifiText = document.getElementById('wifi-text');
-            if (data.wifi_connected) {
-                document.getElementById('wifi-status').className = 'wifi-status wifi-connected';
-                wifiText.textContent = `Connected (${data.wifi_rssi || 'N/A'} dBm)`;
-            } else {
-                document.getElementById('wifi-status').className = 'wifi-status wifi-disconnected';
-                wifiText.textContent = 'Wi-Fi Disconnected';
-            }
-            
-            // Update statistics
-            if (data.reading_count > 0) {
-                document.getElementById('min-temp').textContent = data.min_temp.toFixed(2);
-                document.getElementById('max-temp').textContent = data.max_temp.toFixed(2);
-                document.getElementById('avg-temp').textContent = data.avg_temp.toFixed(2);
-                document.getElementById('reading-count').textContent = data.reading_count;
-            }
-            
-            // Update daily statistics
-            if (data.daily_reading_count > 0) {
-                document.getElementById('daily-min-temp').textContent = data.daily_min_temp.toFixed(2);
-                document.getElementById('daily-max-temp').textContent = data.daily_max_temp.toFixed(2);
-                document.getElementById('daily-avg-temp').textContent = data.daily_avg_temp.toFixed(2);
-                document.getElementById('daily-reading-count').textContent = data.daily_reading_count;
-                document.getElementById('daily-date').textContent = data.daily_date || '--';
-                
-                const hoursLeft = data.daily_time_left_hours || 0;
-                const minutesLeft = data.daily_time_left_minutes || 0;
-                document.getElementById('daily-time-left').textContent = `${hoursLeft}h ${minutesLeft}m`;
-            } else {
-                document.getElementById('daily-date').textContent = data.daily_date || '--';
-                document.getElementById('daily-time-left').textContent = '24h 0m';
-            }
-        }
-        
-        function showDisconnectedState() {
-            document.getElementById('disconnected-notice').style.display = 'block';
-            document.getElementById('sensor-status').textContent = 'Disconnected...';
-            document.getElementById('status').className = 'status error';
-            document.getElementById('wifi-text').textContent = 'Attempting reconnection...';
-        }
-        
-        function showOfflineState() {
-            // Set all values to dashes
-            const dashElements = ['temp', 'pressure', 'uptime', 'lastUpdate', 
-                                'min-temp', 'max-temp', 'avg-temp', 'reading-count',
-                                'daily-min-temp', 'daily-max-temp', 'daily-avg-temp', 
-                                'daily-reading-count', 'daily-date', 'daily-time-left'];
-            
-            dashElements.forEach(id => {
-                document.getElementById(id).textContent = '--';
-            });
-            
-            document.getElementById('sensor-status').textContent = 'Offline ❌';
-            document.getElementById('status').className = 'status error';
-            document.getElementById('wifi-text').textContent = 'ESP32-S3 powered off';
-            document.getElementById('offline-mode').style.display = 'block';
-        }
-        
-        async function resetStats() {
-            if (!esp32BaseUrl || !isConnected) {
-                alert('Must be connected to ESP32-S3 to reset statistics');
+
+        // Open in new tab
+        function openInNewTab() {
+            if (!esp32Host || !esp32Port) {
+                alert('⚠️ Παρακαλώ ρυθμίστε πρώτα το Host και Port!');
                 return;
             }
             
-            if (confirm('Are you sure you want to reset all statistics?')) {
-                try {
-                    const response = await fetch(esp32BaseUrl + '/reset');
-                    if (response.ok) {
-                        alert('Statistics reset successfully!');
-                        updateData(); // Refresh display
-                    } else {
-                        alert('Error resetting statistics');
-                    }
-                } catch (error) {
-                    alert('Connection error');
-                }
-            }
+            const url = `http://${esp32Host}:${esp32Port}`;
+            window.open(url, '_blank');
         }
-        
-        // Handle page visibility changes
-        document.addEventListener('visibilitychange', function() {
-            if (!document.hidden && esp32BaseUrl) {
-                updateData();
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('pageLoadTime').textContent = new Date().toLocaleString();
+            loadConfig();
+        });
+
+        // Handle page unload
+        window.addEventListener('beforeunload', function() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
             }
         });
     </script>

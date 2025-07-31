@@ -4,7 +4,7 @@
     <title>🌱 SmartGreenhouse - Remote Monitor</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
+    <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
     <style>
         body { 
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
@@ -163,15 +163,24 @@
             <h3>🔧 Ρύθμιση Σύνδεσης</h3>
             <p><strong>⚠️ ΣΗΜΑΝΤΙΚΟ:</strong> Πρέπει να ρυθμίσεις το router σου για port forwarding!</p>
             
+            <div style="background: #d4edda; border: 2px solid #c3e6cb; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                <h4 style="color: #155724; margin: 0 0 10px 0;">📡 Current Status:</h4>
+                <div style="font-size: 14px; color: #155724;">
+                    <div>• <strong>Local Network:</strong> 192.168.2.19 ✅ Working</div>
+                    <div>• <strong>Remote Access:</strong> 46.176.29.7:8082 🧪 Ready to test</div>
+                    <div>• <strong>Port Forward:</strong> External 8082 → Internal 192.168.2.19:80</div>
+                </div>
+            </div>
+            
             <div class="input-group">
                 <label for="hostInput">🌐 Public IP/Domain:</label>
-                <input type="text" id="hostInput" placeholder="π.χ. your-public-ip.com ή 123.456.789.123" value="">
+                <input type="text" id="hostInput" placeholder="π.χ. your-public-ip.com ή 123.456.789.123" value="46.176.29.7">
                 <div class="help-text">Το δημόσιο IP ή domain name του router σου</div>
             </div>
             
             <div class="input-group">
                 <label for="portInput">🔌 External Port:</label>
-                <input type="number" id="portInput" placeholder="π.χ. 8080" value="8080">
+                <input type="number" id="portInput" placeholder="π.χ. 8080" value="8082">
                 <div class="help-text">Η εξωτερική πόρτα που έχεις ρυθμίσει στο router</div>
             </div>
             
@@ -186,7 +195,7 @@
                 <li><strong>Port Forwarding:</strong> Βρες το Port Forwarding/Virtual Server</li>
                 <li><strong>Νέος Κανόνας:</strong>
                     <ul>
-                        <li>External Port: 8080 (ή άλλη πόρτα)</li>
+                        <li>External Port: 8082 (η πόρτα σου)</li>
                         <li>Internal IP: 192.168.2.19</li>
                         <li>Internal Port: 80</li>
                         <li>Protocol: TCP</li>

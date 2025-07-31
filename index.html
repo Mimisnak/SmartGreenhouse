@@ -167,8 +167,9 @@
                 <h4 style="color: #155724; margin: 0 0 10px 0;">📡 Current Status:</h4>
                 <div style="font-size: 14px; color: #155724;">
                     <div>• <strong>Local Network:</strong> 192.168.2.19 ✅ Working</div>
-                    <div>• <strong>Remote Access:</strong> 46.176.29.7:8083 ✅ Port forwarding configured!</div>
-                    <div>• <strong>Port Forward:</strong> External 8083 → Internal 192.168.2.19:80</div>
+                    <div>• <strong>Direct Access:</strong> 46.176.29.7:8083 ✅ Working perfectly!</div>
+                    <div>• <strong>HTTPS Issue:</strong> GitHub Pages → HTTP blocked by CORS 🚫</div>
+                    <div>• <strong>Solution:</strong> Use "🌐 Άνοιγμα σε νέα καρτέλα" button below</div>
                 </div>
             </div>
             
@@ -189,7 +190,21 @@
         </div>
 
         <div class="instructions">
-            <h4>📋 Οδηγίες Port Forwarding:</h4>
+            <h4>� How to Access Your ESP32-S3:</h4>
+            <div style="background: #d4edda; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                <strong>✅ WORKING METHOD:</strong><br>
+                Click "🌐 Direct Access - WORKS!" button above<br>
+                OR visit directly: <a href="http://46.176.29.7:8083" target="_blank">http://46.176.29.7:8083</a>
+            </div>
+            <div style="background: #f8d7da; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                <strong>❌ Why CORS is blocked:</strong><br>
+                GitHub Pages uses HTTPS, but your ESP32-S3 uses HTTP.<br>
+                Modern browsers block HTTPS → HTTP requests for security.
+            </div>
+        </div>
+
+        <div class="instructions">
+            <h4>�📋 Οδηγίες Port Forwarding:</h4>
             <ol>
                 <li><strong>Router Admin:</strong> Μπες στο 192.168.1.1 (ή 192.168.2.1)</li>
                 <li><strong>Port Forwarding:</strong> Βρες το Port Forwarding/Virtual Server</li>
@@ -206,8 +221,8 @@
         </div>
         
         <div style="text-align: center; margin: 20px 0;">
-            <button class="connect-button" onclick="connectToESP32()" id="connectBtn">🔗 Σύνδεση στο ESP32-S3</button>
-            <button class="connect-button" onclick="openInNewTab()" id="openBtn" style="background: #007bff;">🌐 Άνοιγμα σε νέα καρτέλα</button>
+            <button class="connect-button" onclick="connectToESP32()" id="connectBtn" style="background: #6c757d; cursor: not-allowed;" disabled>🚫 CORS Blocked</button>
+            <button class="connect-button" onclick="openInNewTab()" id="openBtn" style="background: #28a745;">🌐 Direct Access - WORKS!</button>
         </div>
         
         <div id="statusDiv" class="status connecting" style="display: none;">

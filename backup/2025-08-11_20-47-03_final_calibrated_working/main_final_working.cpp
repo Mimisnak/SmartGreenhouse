@@ -32,22 +32,6 @@ float lightLevel = 0.0;
 float soilMoisture = -1.0; // percent, -1 means not initialized
 int soilRaw = -1;          // last raw ADC reading
 
-// History storage - 48 hours of data (one reading every 5 minutes = 576 points)
-#define MAX_HISTORY_POINTS 576
-struct SensorReading {
-  float temperature;
-  float pressure;
-  float lightLevel;
-  float soilMoisture;
-  unsigned long timestamp;
-};
-
-SensorReading sensorHistory[MAX_HISTORY_POINTS];
-int historyIndex = 0;
-int historyCount = 0;
-unsigned long lastHistoryUpdate = 0;
-#define HISTORY_INTERVAL 300000  // 5 minutes in milliseconds
-
 #define ENABLE_SOIL_DEBUG 1
 #define ENABLE_REQUEST_LOG 1
 #define ENABLE_CALIBRATION_MODE 1  // Set to 1 to see calibration values
@@ -82,7 +66,6 @@ float readSoilMoisturePercent();
 void setupWebServer();
 void checkAlerts();
 void calibrateSoilSensor();
-void addToHistory();
 
 void setup() {
   Serial.begin(115200);
@@ -246,7 +229,7 @@ void setupWebServer() {
   AsyncResponseStream *res = request->beginResponseStream("text/html");
   auto esc = [](String v){return v;}; // placeholder if we later need escaping
   res->print(F("<!DOCTYPE html><html lang='el'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'>"));
-  res->print(F("<title>Smart Greenhouse</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#8BC34A 0%,#689F38 50%,#558B2F 100%);min-height:100vh;padding:10px;color:#333;overflow-x:hidden;}@keyframes backgroundShift{0%,100%{background:linear-gradient(135deg,#8BC34A 0%,#689F38 50%,#558B2F 100%);}50%{background:linear-gradient(135deg,#4CAF50 0%,#388E3C 50%,#2E7D32 100%);}} .container{max-width:1200px;margin:0 auto;background:rgba(255,255,255,0.95);border-radius:15px;box-shadow:0 8px 25px rgba(46,125,50,0.2);padding:20px;} .header{text-align:center;margin-bottom:25px;position:relative;background:linear-gradient(135deg,#2E7D32,#388E3C,#4CAF50);color:white;padding:20px;border-radius:12px;} .main-title{font-size:2em;margin-bottom:8px;font-weight:700;} .subtitle{font-size:0.95em;margin-bottom:15px;opacity:0.9;} .language-switcher{position:absolute;top:10px;right:10px;display:flex;gap:5px;} .language-btn{padding:5px 10px;border:2px solid rgba(255,255,255,0.3);background:transparent;color:white;border-radius:12px;cursor:pointer;transition:.3s;font-size:11px;font-weight:600;min-height:32px;min-width:36px;} .language-btn.active,.language-btn:hover{background:rgba(255,255,255,0.2);transform:translateY(-1px);} .status-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:15px;margin-bottom:20px;} .card{background:rgba(255,255,255,0.95);border-radius:12px;padding:18px;text-align:center;position:relative;overflow:hidden;transition:.3s;border-left:4px solid #4CAF50;} .card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(76,175,80,0.2);} .card-icon{font-size:2em;margin-bottom:8px;display:block;color:#4CAF50;} .card-title{font-size:0.95em;color:#2E7D32;margin-bottom:5px;font-weight:600;} .card-value{font-size:1.8em;font-weight:700;color:#2E7D32;margin-bottom:2px;} .card-unit{color:#558B2F;font-size:0.85em;margin-bottom:4px;} .card-status{font-size:.75em;font-weight:600;padding:4px 8px;border-radius:10px;display:inline-block;} .ok{background:linear-gradient(135deg,#4CAF50,#66BB6A);color:white;} .na{background:linear-gradient(135deg,#FF9800,#FFB74D);color:white;} .charts-section{margin-top:15px;background:rgba(255,255,255,0.95);border-radius:12px;padding:15px;border-left:4px solid #4CAF50;} .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:15px;} .chart-container{background:white;border-radius:10px;padding:12px;box-shadow:0 3px 12px rgba(76,175,80,0.1);position:relative;border-left:3px solid #4CAF50;} .chart-title{text-align:center;margin-bottom:8px;font-size:0.9em;font-weight:600;color:#2E7D32;} .chart-wrapper{position:relative;height:220px;margin-bottom:6px;} .footer{margin-top:20px;text-align:center;color:white;font-size:0.85em;background:linear-gradient(135deg,#2E7D32,#388E3C);padding:12px;border-radius:10px;} .footer a{color:#C8E6C9;text-decoration:none;font-weight:600;transition:.3s;} .footer a:hover{text-decoration:underline;color:white;} .update-time{color:#A5D6A7;font-size:.75em;margin-top:6px;font-style:italic;} @media (max-width:768px){body{padding:5px;}.container{padding:12px;margin:5px;border-radius:10px;}.header{padding:15px;}.main-title{font-size:1.6em;}.subtitle{font-size:0.9em;}.language-switcher{position:static;justify-content:center;margin-top:10px;}.status-cards{grid-template-columns:1fr;gap:12px;}.card{padding:15px;}.card-icon{font-size:1.8em;}.card-value{font-size:1.6em;}.charts-grid{grid-template-columns:1fr;gap:12px;}.chart-wrapper{height:200px;}.charts-section{padding:12px;}} @media (max-width:480px){.container{padding:8px;}.header{padding:12px;}.main-title{font-size:1.4em;}.card{padding:12px;}.card-icon{font-size:1.6em;}.card-value{font-size:1.4em;}.chart-wrapper{height:180px;}.footer{padding:10px;font-size:0.8em;}}</style></head><body>"));
+  res->print(F("<title>Smart Greenhouse</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:20px;color:#333;} .container{max-width:1400px;margin:0 auto;background:rgba(255,255,255,0.95);border-radius:20px;box-shadow:0 20px 40px rgba(0,0,0,0.1);padding:30px;} .header{text-align:center;margin-bottom:40px;position:relative;} .main-title{font-size:2.5em;background:linear-gradient(45deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px;font-weight:700;} .subtitle{color:#666;font-size:1.1em;margin-bottom:30px;} .language-switcher{position:absolute;top:0;right:0;display:flex;gap:10px;} .language-btn{padding:8px 15px;border:2px solid #667eea;background:transparent;color:#667eea;border-radius:20px;cursor:pointer;transition:.3s;font-weight:600;} .language-btn.active,.language-btn:hover{background:#667eea;color:#fff;transform:translateY(-2px);} .status-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:25px;margin-bottom:40px;} .card{background:linear-gradient(135deg,#f5f7fa 0%,#c3cfe2 100%);border-radius:15px;padding:24px;text-align:center;position:relative;overflow:hidden;transition:.3s;} .card:hover{transform:translateY(-5px);box-shadow:0 15px 30px rgba(0,0,0,0.2);} .card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:linear-gradient(90deg,#667eea,#764ba2);} .card-icon{font-size:2.4em;margin-bottom:12px;display:block;} .card-title{font-size:1.05em;color:#2c3e50;margin-bottom:6px;font-weight:600;} .card-value{font-size:2.2em;font-weight:700;color:#2c3e50;margin-bottom:2px;} .card-unit{color:#7f8c8d;font-size:0.95em;margin-bottom:4px;} .card-status{font-size:.85em;font-weight:600;padding:4px 10px;border-radius:14px;display:inline-block;} .ok{background:#e0f7e9;color:#1e7d3c;} .na{background:#ffe8e6;color:#a6261d;} .charts-section{margin-top:20px;} .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:30px;} .chart-container{background:rgba(255,255,255,0.9);border-radius:15px;padding:20px;box-shadow:0 10px 20px rgba(0,0,0,0.1);position:relative;} .chart-title{text-align:center;margin-bottom:12px;font-size:1.15em;font-weight:600;color:#2c3e50;} .chart-wrapper{position:relative;height:320px;margin-bottom:10px;} .footer{margin-top:40px;text-align:center;color:#1a252f;font-size:0.95em;border-top:2px solid #34495e;padding-top:20px;background:rgba(245,245,245,0.9);border-radius:10px;box-shadow:0 -5px 15px rgba(0,0,0,0.1);} .footer a{color:#2c3e50;text-decoration:none;font-weight:700;transition:.3s;} .footer a:hover{text-decoration:underline;color:#34495e;} .update-time{color:#7f8c8d;font-size:.85em;margin-top:10px;font-style:italic;} @media (max-width:768px){.container{padding:18px;margin:10px;}.main-title{font-size:2em;}.charts-grid{grid-template-columns:1fr;}.language-switcher{position:static;justify-content:center;margin-top:20px;}}</style></head><body>"));
   res->print(F("<div class='container'><div class='header'><div class='language-switcher'><button class='language-btn active' onclick='setLanguage(\"el\")' id='btn-el'>EL</button><button class='language-btn' onclick='setLanguage(\"en\")' id='btn-en'>EN</button></div><h1 class='main-title' data-el='Smart Greenhouse' data-en='Smart Greenhouse'>Smart Greenhouse</h1><p class='subtitle' data-el='Σύστημα Παρακολούθησης Φυτών' data-en='Plant Monitoring System'>Σύστημα Παρακολούθησης Φυτών</p></div>"));
   res->print(F("<div class='status-cards'>"));
   // Temperature card
@@ -276,8 +259,8 @@ void setupWebServer() {
   res->print(F("<div class='chart-container'><h3 class='chart-title' data-el='Ιστορικό Υγρασίας Εδάφους (48 ώρες)' data-en='Soil Moisture History (48h)'>Ιστορικό Υγρασίας Εδάφους (48 ώρες)</h3><div class='chart-wrapper'><canvas id='soilChart'></canvas></div></div>"));
   res->print(F("</div></div>"));
   res->print(F("<div class='footer'><p>&copy; 2025 <a href='https://github.com/Mimisnak/SmartGreenhouse' target='_blank'>Smart Greenhouse System</a> | <span data-el='Developer by:' data-en='Developer by:'>Developer by:</span> <a href='https://mimis.dev' target='_blank'>mimis.dev</a></p><div class='update-time' id='lastUpdate' data-el='Τελευταία ενημέρωση: αρχική' data-en='Last update: initial'>Τελευταία ενημέρωση: αρχική</div></div></div>"));
-  // JS with improved sensor disconnection detection and stable colors
-  res->print(F("<script src='https://cdn.jsdelivr.net/npm/chart.js'></script><script>var tempChart=null,pressChart=null,lightChart=null,soilChart=null;var dataHistory={temperature:[],pressure:[],light:[],soil:[],timestamps:[],realTimestamps:[]};var currentLanguage='el',lastUpdateTime=null;const WINDOW_MS=48*60*60*1000;function trimOld(){var now=Date.now();while(dataHistory.realTimestamps.length && now-dataHistory.realTimestamps[0].getTime()>WINDOW_MS){dataHistory.realTimestamps.shift();dataHistory.timestamps.shift();dataHistory.temperature.shift();dataHistory.pressure.shift();dataHistory.light.shift();dataHistory.soil.shift();}}function loadServerHistory(){return fetch('/history').then(r=>r.json()).then(d=>{if(d.temperature && d.temperature.length>0){for(var i=0;i<d.temperature.length;i++){var t=new Date(d.timestamps[i]);dataHistory.realTimestamps.push(t);dataHistory.timestamps.push(t.toLocaleTimeString());dataHistory.temperature.push(d.temperature[i]);dataHistory.pressure.push(d.pressure[i]);dataHistory.light.push(d.light[i]);dataHistory.soil.push(d.soil[i]);lastUpdateTime=t;}}}).catch(e=>{console.log('No server history available')});}function loadStoredData(){var s=localStorage.getItem('greenhouse-data-v2');if(!s)return;try{var arr=JSON.parse(s);var now=Date.now();arr.forEach(it=>{var t=new Date(it.timestamp);if(now-t.getTime()<=WINDOW_MS){var existing=dataHistory.realTimestamps.find(rt=>Math.abs(rt.getTime()-t.getTime())<60000);if(!existing){dataHistory.realTimestamps.push(t);dataHistory.timestamps.push(t.toLocaleTimeString());dataHistory.temperature.push(it.temperature);dataHistory.pressure.push(it.pressure);dataHistory.light.push(it.light);dataHistory.soil.push(it.soil);lastUpdateTime=t;}}});}catch(e){}}function saveData(){try{var out=[];for(var i=0;i<dataHistory.realTimestamps.length;i++){out.push({timestamp:dataHistory.realTimestamps[i].toISOString(),temperature:dataHistory.temperature[i],pressure:dataHistory.pressure[i],light:dataHistory.light[i],soil:dataHistory.soil[i]});}localStorage.setItem('greenhouse-data-v2',JSON.stringify(out));}catch(e){}}function makeChart(ctx,label,color,data){return new Chart(ctx,{type:'line',data:{labels:dataHistory.timestamps,datasets:[{label:label,data:data,borderColor:color,backgroundColor:color.replace('rgb','rgba').replace(')',',0.15)'),tension:.35,fill:true,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},animation:{duration:0},scales:{x:{ticks:{maxRotation:0,minRotation:0}}}}});}function initCharts(){tempChart=makeChart(document.getElementById('tempChart').getContext('2d'),'Temperature (°C)','rgb(76,175,80)',dataHistory.temperature);pressChart=makeChart(document.getElementById('pressChart').getContext('2d'),'Pressure (hPa)','rgb(46,125,50)',dataHistory.pressure);lightChart=makeChart(document.getElementById('lightChart').getContext('2d'),'Light (lux)','rgb(139,195,74)',dataHistory.light);soilChart=makeChart(document.getElementById('soilChart').getContext('2d'),'Soil (%)','rgb(102,187,106)',dataHistory.soil);}function refreshCharts(){[tempChart,pressChart,lightChart,soilChart].forEach((c,i)=>{if(!c)return;c.data.labels=dataHistory.timestamps.slice();var arr=i===0?dataHistory.temperature:i===1?dataHistory.pressure:i===2?dataHistory.light:dataHistory.soil;c.data.datasets[0].data=arr.slice();c.update('none');});}function updateData(){fetch('/api').then(r=>r.json()).then(d=>{if(d.temperature>-900 && d.temperature<100){document.getElementById('temperature').textContent=d.temperature.toFixed(1);document.getElementById('tempStatus').className='card-status ok';document.getElementById('tempStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';}else{document.getElementById('temperature').textContent='--';document.getElementById('tempStatus').className='card-status na';document.getElementById('tempStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}if(d.pressure>-900 && d.pressure<2000){document.getElementById('pressure').textContent=d.pressure.toFixed(1);document.getElementById('pressStatus').className='card-status ok';document.getElementById('pressStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';}else{document.getElementById('pressure').textContent='--';document.getElementById('pressStatus').className='card-status na';document.getElementById('pressStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}if(d.light>=0){document.getElementById('light').textContent=d.light.toFixed(0);document.getElementById('lightStatus').className='card-status ok';document.getElementById('lightStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';}else{document.getElementById('light').textContent='--';document.getElementById('lightStatus').className='card-status na';document.getElementById('lightStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}if(d.soil>=0){document.getElementById('soil').textContent=d.soil.toFixed(0);document.getElementById('soilStatus').className='card-status ok';document.getElementById('soilStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';}else{document.getElementById('soil').textContent='--';document.getElementById('soilStatus').className='card-status na';document.getElementById('soilStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}var now=new Date();var existing=dataHistory.realTimestamps.find(rt=>Math.abs(rt.getTime()-now.getTime())<60000);if(!existing){dataHistory.temperature.push(d.temperature>-900?d.temperature:null);dataHistory.pressure.push(d.pressure>-900?d.pressure:null);dataHistory.light.push(d.light>=0?d.light:null);dataHistory.soil.push(d.soil>=0?d.soil:null);dataHistory.realTimestamps.push(now);dataHistory.timestamps.push(now.toLocaleTimeString());trimOld();refreshCharts();saveData();}lastUpdateTime=now;document.getElementById('lastUpdate').textContent=(currentLanguage==='el'?'Τελευταία ενημέρωση: ':'Last update: ')+now.toLocaleString(currentLanguage==='el'?'el-GR':'en-US');}).catch(e=>{});}function setLanguage(lang){currentLanguage=lang;document.querySelectorAll('.language-btn').forEach(b=>b.classList.remove('active'));document.getElementById('btn-'+lang).classList.add('active');document.querySelectorAll('[data-'+lang+']').forEach(el=>{el.textContent=el.getAttribute('data-'+lang)});if(lastUpdateTime){document.getElementById('lastUpdate').textContent=(currentLanguage==='el'?'Τελευταία ενημέρωση: ':'Last update: ')+lastUpdateTime.toLocaleString(currentLanguage==='el'?'el-GR':'en-US')}localStorage.setItem('preferred-language',lang);}window.onload=function(){document.body.style.animation='none';document.body.style.background='linear-gradient(135deg,#8BC34A 0%,#689F38 50%,#558B2F 100%)';var savedLang=localStorage.getItem('preferred-language')||'el';setLanguage(savedLang);loadServerHistory().then(()=>{loadStoredData();dataHistory.realTimestamps.sort((a,b)=>a.getTime()-b.getTime());dataHistory.timestamps=dataHistory.realTimestamps.map(t=>t.toLocaleTimeString());initCharts();refreshCharts();updateData();setInterval(updateData,5000);});}</script></body></html>"));
+  // JS
+  res->print(F("<script src='https://cdn.jsdelivr.net/npm/chart.js'></script><script>var tempChart=null,pressChart=null,lightChart=null,soilChart=null;var dataHistory={temperature:[],pressure:[],light:[],soil:[],timestamps:[],realTimestamps:[]};var currentLanguage='el',lastUpdateTime=null;const WINDOW_MS=48*60*60*1000;function trimOld(){var now=Date.now();while(dataHistory.realTimestamps.length && now-dataHistory.realTimestamps[0].getTime()>WINDOW_MS){dataHistory.realTimestamps.shift();dataHistory.timestamps.shift();dataHistory.temperature.shift();dataHistory.pressure.shift();dataHistory.light.shift();dataHistory.soil.shift();}}function loadStoredData(){var s=localStorage.getItem('greenhouse-data-v2');if(!s)return;try{var arr=JSON.parse(s);var now=Date.now();arr.forEach(it=>{var t=new Date(it.timestamp);if(now-t.getTime()<=WINDOW_MS){dataHistory.realTimestamps.push(t);dataHistory.timestamps.push(t.toLocaleTimeString());dataHistory.temperature.push(it.temperature);dataHistory.pressure.push(it.pressure);dataHistory.light.push(it.light);dataHistory.soil.push(it.soil);lastUpdateTime=t;}});}catch(e){}}function saveData(){try{var out=[];for(var i=0;i<dataHistory.realTimestamps.length;i++){out.push({timestamp:dataHistory.realTimestamps[i].toISOString(),temperature:dataHistory.temperature[i],pressure:dataHistory.pressure[i],light:dataHistory.light[i],soil:dataHistory.soil[i]});}localStorage.setItem('greenhouse-data-v2',JSON.stringify(out));}catch(e){}}function makeChart(ctx,label,color,data){return new Chart(ctx,{type:'line',data:{labels:dataHistory.timestamps,datasets:[{label:label,data:data,borderColor:color,backgroundColor:color.replace('rgb','rgba').replace(')',',0.15)'),tension:.35,fill:true,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},animation:false,scales:{x:{ticks:{maxRotation:0,minRotation:0}}}}});}function initCharts(){tempChart=makeChart(document.getElementById('tempChart').getContext('2d'),'Temperature (°C)','rgb(231,76,60)',dataHistory.temperature);pressChart=makeChart(document.getElementById('pressChart').getContext('2d'),'Pressure (hPa)','rgb(52,152,219)',dataHistory.pressure);lightChart=makeChart(document.getElementById('lightChart').getContext('2d'),'Light (lux)','rgb(243,156,18)',dataHistory.light);soilChart=makeChart(document.getElementById('soilChart').getContext('2d'),'Soil (%)','rgb(46,204,113)',dataHistory.soil);}function refreshCharts(){[tempChart,pressChart,lightChart,soilChart].forEach((c,i)=>{if(!c)return;c.data.labels=dataHistory.timestamps.slice();var arr=i===0?dataHistory.temperature:i===1?dataHistory.pressure:i===2?dataHistory.light:dataHistory.soil;c.data.datasets[0].data=arr.slice();c.update('none');});}function updateData(){fetch('/api').then(r=>r.json()).then(d=>{document.getElementById('temperature').textContent=d.temperature.toFixed(1);document.getElementById('pressure').textContent=d.pressure.toFixed(1);if(d.light>0){document.getElementById('light').textContent=d.light.toFixed(0);document.getElementById('lightStatus').className='card-status ok';document.getElementById('lightStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';}else{document.getElementById('light').textContent='--';document.getElementById('lightStatus').className='card-status na';document.getElementById('lightStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}if(d.soil>=0){document.getElementById('soil').textContent=d.soil.toFixed(0);document.getElementById('soilStatus').className='card-status ok';document.getElementById('soilStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';} else {document.getElementById('soil').textContent='--';document.getElementById('soilStatus').className='card-status na';document.getElementById('soilStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}var now=new Date();dataHistory.temperature.push(d.temperature);dataHistory.pressure.push(d.pressure);dataHistory.light.push(d.light);dataHistory.soil.push(d.soil);dataHistory.realTimestamps.push(now);dataHistory.timestamps.push(now.toLocaleTimeString());trimOld();refreshCharts();saveData();lastUpdateTime=now;document.getElementById('lastUpdate').textContent=(currentLanguage==='el'?'Τελευταία ενημέρωση: ':'Last update: ')+ now.toLocaleString(currentLanguage==='el'?'el-GR':'en-US');}).catch(e=>{});}function setLanguage(lang){currentLanguage=lang;document.querySelectorAll('.language-btn').forEach(b=>b.classList.remove('active'));document.getElementById('btn-'+lang).classList.add('active');document.querySelectorAll('[data-'+lang+']').forEach(el=>{el.textContent=el.getAttribute('data-'+lang)});if(lastUpdateTime){document.getElementById('lastUpdate').textContent=(currentLanguage==='el'?'Τελευταία ενημέρωση: ':'Last update: ')+ lastUpdateTime.toLocaleString(currentLanguage==='el'?'el-GR':'en-US')}localStorage.setItem('preferred-language',lang);}window.onload=function(){var savedLang=localStorage.getItem('preferred-language')||'el';setLanguage(savedLang);loadStoredData();initCharts();refreshCharts();updateData();setInterval(updateData,5000);}</script></body></html>"));
   logRequest(request,200);
   request->send(res);
   });
@@ -339,65 +322,14 @@ void setupWebServer() {
     logRequest(request,200);
     request->send(200, "text/html", html);
   });
-  
-  // History endpoint for charts
-  server.on("/history", HTTP_GET, [](AsyncWebServerRequest *request){
-    JsonDocument doc;
-    JsonArray temps = doc["temperature"].to<JsonArray>();
-    JsonArray pressures = doc["pressure"].to<JsonArray>();
-    JsonArray lights = doc["light"].to<JsonArray>();
-    JsonArray soils = doc["soil"].to<JsonArray>();
-    JsonArray timestamps = doc["timestamps"].to<JsonArray>();
-    
-    // Add historical data in chronological order
-    int start = (historyCount < MAX_HISTORY_POINTS) ? 0 : historyIndex;
-    for (int i = 0; i < historyCount; i++) {
-      int idx = (start + i) % MAX_HISTORY_POINTS;
-      temps.add(sensorHistory[idx].temperature);
-      pressures.add(sensorHistory[idx].pressure);
-      lights.add((sensorHistory[idx].lightLevel != -1) ? sensorHistory[idx].lightLevel : 0);
-      soils.add((sensorHistory[idx].soilMoisture >= 0) ? sensorHistory[idx].soilMoisture : 0);
-      timestamps.add(sensorHistory[idx].timestamp);
-    }
-    
-    String response;
-    serializeJson(doc, response);
-    logRequest(request,200);
-    request->send(200, "application/json", response);
-  });
-  
   server.onNotFound([](AsyncWebServerRequest *request){ logRequest(request,404); request->send(404,"text/plain","File not found"); });
 }
 
 void loop() {
-  // Check BMP280 sensor connection
-  float newTemp = bmp.readTemperature();
-  float newPressure = bmp.readPressure() / 100.0F;
-  
-  // Validate BMP280 readings (NaN means disconnected)
-  if (isnan(newTemp) || isnan(newPressure) || newTemp < -50 || newTemp > 100) {
-    temperature = -999; // Error indicator
-    pressure = -999;    // Error indicator
-  } else {
-    temperature = newTemp;
-    pressure = newPressure;
-  }
-  
-  // Check BH1750 sensor connection
-  if (lightLevel != -1) {
-    float newLight = lightMeter.readLightLevel();
-    if (isnan(newLight) || newLight < 0) {
-      lightLevel = -1; // Mark as disconnected
-    } else {
-      lightLevel = newLight;
-    }
-  }
-  
-  // Check soil sensor connection
+  temperature = bmp.readTemperature();
+  pressure = bmp.readPressure() / 100.0F;
+  if (lightLevel != -1) lightLevel = lightMeter.readLightLevel();
   soilMoisture = readSoilMoisturePercent();
-  
-  // Add to history every 5 minutes
-  addToHistory();
   
   // Calibration and alerts
   calibrateSoilSensor();
@@ -419,28 +351,4 @@ void loop() {
     Serial.println(", Soil: N/A");
   }
   delay(500);
-}
-
-void addToHistory() {
-  unsigned long currentTime = millis();
-  if (currentTime - lastHistoryUpdate >= HISTORY_INTERVAL) {
-    lastHistoryUpdate = currentTime;
-    
-    // Add current reading to circular buffer
-    sensorHistory[historyIndex].temperature = temperature;
-    sensorHistory[historyIndex].pressure = pressure;
-    sensorHistory[historyIndex].lightLevel = lightLevel;
-    sensorHistory[historyIndex].soilMoisture = soilMoisture;
-    sensorHistory[historyIndex].timestamp = currentTime;
-    
-    historyIndex = (historyIndex + 1) % MAX_HISTORY_POINTS;
-    if (historyCount < MAX_HISTORY_POINTS) {
-      historyCount++;
-    }
-    
-    Serial.print("History added: "); 
-    Serial.print(historyCount); 
-    Serial.print("/"); 
-    Serial.println(MAX_HISTORY_POINTS);
-  }
 }

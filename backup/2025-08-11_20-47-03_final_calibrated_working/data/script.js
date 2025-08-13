@@ -38,7 +38,7 @@ async function loadHistoricalData() {
         
         const historyData = await response.json();
         
-        if (historyData.temperature && historyData.temperature.length > 0) {
+        if (historyData.data && historyData.data.length > 0) {
             // Clear existing data
             dataHistory.temperature = [];
             dataHistory.pressure = [];
@@ -46,22 +46,20 @@ async function loadHistoricalData() {
             dataHistory.light = [];
             dataHistory.timestamps = [];
             
-            // Load server data (arrays from ESP32)
-            for (let i = 0; i < historyData.temperature.length; i++) {
-                dataHistory.temperature.push(historyData.temperature[i]);
-                dataHistory.pressure.push(historyData.pressure[i]);
-                dataHistory.soilMoisture.push(historyData.soil[i] || 0);
-                dataHistory.light.push(historyData.light[i] || 0);
-                // Convert ESP32 millis() to readable time
-                const timestamp = new Date(Date.now() - (historyData.timestamps.length - 1 - i) * 300000);
-                dataHistory.timestamps.push(timestamp.toISOString());
-            }
+            // Load server data
+            historyData.data.forEach(point => {
+                dataHistory.temperature.push(point.temperature);
+                dataHistory.pressure.push(point.pressure);
+                dataHistory.soilMoisture.push(point.soilMoisture || 0);
+                dataHistory.light.push(point.light || 0);
+                dataHistory.timestamps.push(new Date(point.timestamp * 1000).toISOString());
+            });
             
             // Update charts with historical data
             updateChartsWithHistory();
             
-            console.log(`Loaded ${historyData.temperature.length} historical data points`);
-            showNotification(`Φορτώθηκαν ${historyData.temperature.length} ιστορικά δεδομένα!`, 'success');
+            console.log(`Loaded ${historyData.data.length} historical data points`);
+            showNotification(`Φορτώθηκαν ${historyData.data.length} ιστορικά δεδομένα!`, 'success');
         }
         
     } catch (error) {

@@ -287,8 +287,22 @@
             </div>
             
             <div class="chart-wrapper">
+                <canvas id="pressureChart"></canvas>
+            </div>
+            
+            <div class="chart-wrapper">
+                <canvas id="lightChart"></canvas>
+            </div>
+            
+            <div class="chart-wrapper">
                 <canvas id="moistureChart"></canvas>
             </div>
+        </div>
+        
+        <!-- Developer Footer -->
+        <div style="background: linear-gradient(135deg, #2E7D32, #4CAF50); color: white; text-align: center; padding: 20px;">
+            <p style="margin: 0; font-size: 1.1rem; font-weight: bold;">💻 Developer by <a href="https://mimis.dev" style="color: #C8E6C9; text-decoration: none;">mimis.dev</a></p>
+            <p style="margin: 5px 0 0 0; font-size: 0.9rem; opacity: 0.9;">🌱 Smart Greenhouse IoT System - Enterprise Level</p>
         </div>
     </div>
 
@@ -366,11 +380,15 @@
         function createDemoCharts() {
             const hours = [];
             const tempData = [];
+            const pressureData = [];
+            const lightData = [];
             const soilData = [];
             
             for(let i = 24; i >= 0; i--) {
                 hours.push(i + 'h ago');
                 tempData.push(20 + Math.random() * 8);
+                pressureData.push(1000 + Math.random() * 50);
+                lightData.push(300 + Math.random() * 400);
                 soilData.push(50 + Math.random() * 25);
             }
             
@@ -394,7 +412,59 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Temperature History (Demo)'
+                            text: '🌡️ Temperature History (Demo)'
+                        }
+                    }
+                }
+            });
+            
+            // Pressure Chart
+            new Chart(document.getElementById('pressureChart'), {
+                type: 'line',
+                data: {
+                    labels: hours,
+                    datasets: [{
+                        label: 'Pressure (hPa)',
+                        data: pressureData,
+                        borderColor: '#FF9800',
+                        backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '🔽 Pressure History (Demo)'
+                        }
+                    }
+                }
+            });
+            
+            // Light Chart
+            new Chart(document.getElementById('lightChart'), {
+                type: 'line',
+                data: {
+                    labels: hours,
+                    datasets: [{
+                        label: 'Light Level (lux)',
+                        data: lightData,
+                        borderColor: '#FFD700',
+                        backgroundColor: 'rgba(255, 215, 0, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: '☀️ Light Level History (Demo)'
                         }
                     }
                 }
@@ -420,7 +490,7 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Soil Moisture History (Demo)'
+                            text: '💧 Soil Moisture History (Demo)'
                         }
                     }
                 }

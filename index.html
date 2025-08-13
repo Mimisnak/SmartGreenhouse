@@ -1,1055 +1,439 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>🌱 ULTIMATE Smart Greenhouse Monitor</title>
+    <title>🌱 Smart Greenhouse - GitHub Pages Demo</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #a8e6cf 100%);
+        /* Include CSS directly for GitHub Pages */
+        :root {
+            --primary-green: #4CAF50;
+            --secondary-green: #8BC34A;
+            --dark-green: #2E7D32;
+            --light-green: #C8E6C9;
+            --accent-green: #66BB6A;
+            --bg-gradient: linear-gradient(135deg, #8BC34A 0%, #689F38 50%, #558B2F 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-gradient);
             min-height: 100vh;
-            animation: backgroundShift 10s ease-in-out infinite;
-        }
-        
-        @keyframes backgroundShift {
-            0%, 100% { background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #a8e6cf 100%); }
-            50% { background: linear-gradient(135deg, #89f7fe 0%, #66a6ff 50%, #a8e6cf 100%); }
-        }
-        
-        .container { 
-            max-width: 1400px; 
-            margin: 0 auto; 
             padding: 20px;
+            animation: none; /* Stable background */
         }
-        
-        .header { 
-            background: linear-gradient(135deg, #28a745, #20c997, #17a2b8); 
-            color: white; 
-            padding: 40px; 
-            text-align: center; 
-            border-radius: 20px; 
-            margin-bottom: 30px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-            position: relative;
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
             overflow: hidden;
         }
-        
-        .header::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
-            animation: shimmer 3s infinite;
-        }
-        
-        @keyframes shimmer {
-            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
-        }
-        
-        .header h1 { 
-            font-size: 3.5em; 
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-            position: relative;
-            z-index: 1;
-        }
-        
-        .header p { 
-            font-size: 1.3em; 
-            opacity: 0.9;
-            position: relative;
-            z-index: 1;
-        }
-        
-        .theme-selector {
-            background: rgba(255,255,255,0.95);
-            padding: 20px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-        }
-        
-        .theme-btn {
-            background: linear-gradient(135deg, #6c757d, #495057);
+
+        .header {
+            background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
             color: white;
-            border: none;
-            padding: 12px 25px;
-            margin: 5px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 14px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .beta-notice {
+            background: linear-gradient(135deg, #FF9800, #FFB74D);
+            color: white;
+            padding: 15px;
+            text-align: center;
             font-weight: bold;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
-        
-        .theme-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
-        }
-        
-        .theme-btn.active {
-            background: linear-gradient(135deg, #28a745, #20c997);
-            transform: scale(1.05);
-        }
-        
-        .weather-effects {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: -1;
-        }
-        
-        .particle {
-            position: absolute;
-            background: rgba(255,255,255,0.8);
-            border-radius: 50%;
-            animation: float 6s ease-in-out infinite;
-        }
-        
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotate(0deg); opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 1; }
-            100% { transform: translateY(-100vh) rotate(360deg); opacity: 0; }
-        }
-        
+
         .dashboard {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 25px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            padding: 30px;
         }
-        
+
         .status-card {
-            background: rgba(255,255,255,0.95);
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-            text-align: center;
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
-        }
-        
-        .status-card:hover {
-            transform: translateY(-10px) scale(1.02);
-            box-shadow: 0 25px 50px rgba(0,0,0,0.2);
-        }
-        
-        .status-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
-            transition: left 0.5s ease;
-        }
-        
-        .status-card:hover::before {
-            left: 100%;
-        }
-        
-        .card-icon {
-            font-size: 3em;
-            margin-bottom: 15px;
-            display: block;
-        }
-        
-        .card-title {
-            font-size: 1.3em;
-            font-weight: bold;
-            color: #28a745;
-            margin-bottom: 15px;
-        }
-        
-        .card-value {
-            font-size: 3em;
-            font-weight: bold;
-            margin: 15px 0;
-            background: linear-gradient(135deg, #28a745, #20c997);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .card-status {
-            padding: 10px 20px;
-            border-radius: 25px;
-            font-weight: bold;
-            margin-top: 15px;
-            display: inline-block;
-        }
-        
-        .status-excellent {
-            background: linear-gradient(135deg, #28a745, #20c997);
-            color: white;
-        }
-        
-        .status-good {
-            background: linear-gradient(135deg, #ffc107, #fd7e14);
-            color: white;
-        }
-        
-        .status-warning {
-            background: linear-gradient(135deg, #dc3545, #e74c3c);
-            color: white;
-        }
-        
-        .charts-section {
-            background: rgba(255,255,255,0.95);
-            border-radius: 20px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-        }
-        
-        .charts-section h2 {
-            text-align: center;
-            color: #28a745;
-            margin-bottom: 30px;
-            font-size: 2.2em;
-        }
-        
-        .charts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 25px;
-        }
-        
-        .chart-container {
             background: white;
-            padding: 20px;
             border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            padding: 25px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+            border: 3px solid var(--primary-green);
             transition: transform 0.3s ease;
         }
-        
-        .chart-container:hover {
-            transform: scale(1.02);
-        }
-        
-        .chart-title {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #28a745;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-        
-        .controls-section {
-            background: rgba(255,255,255,0.95);
-            border-radius: 20px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-        }
-        
-        .controls-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .control-group {
-            text-align: center;
-        }
-        
-        .control-group label {
-            display: block;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #28a745;
-        }
-        
-        .control-input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #28a745;
-            border-radius: 10px;
-            font-size: 16px;
-            text-align: center;
-        }
-        
-        .system-info {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .info-card {
-            background: rgba(255,255,255,0.95);
-            padding: 20px;
-            border-radius: 15px;
-            text-align: center;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            transition: transform 0.3s ease;
-        }
-        
-        .info-card:hover {
+
+        .status-card:hover {
             transform: translateY(-5px);
         }
-        
-        .info-label {
-            font-size: 0.9em;
-            color: #6c757d;
-            margin-bottom: 8px;
-            font-weight: bold;
-        }
-        
-        .info-value {
-            font-size: 1.4em;
-            font-weight: bold;
-            color: #28a745;
-        }
-        
-        .export-section {
-            background: rgba(255,255,255,0.95);
-            border-radius: 20px;
-            padding: 30px;
+
+        .card-icon {
+            font-size: 3rem;
             text-align: center;
-            margin-bottom: 30px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            margin-bottom: 15px;
         }
-        
-        .export-btn {
-            background: linear-gradient(135deg, #28a745, #20c997);
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            margin: 10px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 16px;
+
+        .card-title {
+            font-size: 1.2rem;
             font-weight: bold;
-            transition: all 0.3s ease;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            text-align: center;
+            color: var(--dark-green);
+            margin-bottom: 10px;
         }
-        
-        .export-btn:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+
+        .card-value {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            color: var(--primary-green);
+            margin-bottom: 15px;
         }
-        
-        .notification {
+
+        .card-status {
+            text-align: center;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .status-demo {
+            background: linear-gradient(135deg, var(--primary-green), var(--accent-green));
+        }
+
+        .chart-section {
+            padding: 30px;
+            background: #f8f9fa;
+        }
+
+        .chart-wrapper {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            height: 400px;
+        }
+
+        .language-switcher {
             position: fixed;
             top: 20px;
             right: 20px;
-            padding: 20px;
-            border-radius: 10px;
-            color: white;
-            font-weight: bold;
             z-index: 1000;
-            transform: translateX(400px);
-            transition: transform 0.3s ease;
         }
-        
-        .notification.show {
-            transform: translateX(0);
-        }
-        
-        .notification.success {
-            background: linear-gradient(135deg, #28a745, #20c997);
-        }
-        
-        .notification.warning {
-            background: linear-gradient(135deg, #ffc107, #fd7e14);
-        }
-        
-        .notification.error {
-            background: linear-gradient(135deg, #dc3545, #e74c3c);
-        }
-        
-        .plant-care {
-            background: rgba(255,255,255,0.95);
-            border-radius: 20px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-        }
-        
-        .care-recommendation {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
-            margin: 10px 0;
-            border-left: 5px solid #28a745;
-            display: flex;
-            align-items: center;
-        }
-        
-        .care-icon {
-            font-size: 2em;
-            margin-right: 15px;
-        }
-        
-        .footer {
-            background: linear-gradient(135deg, #2c3e50, #34495e);
+
+        .language-btn {
+            background: var(--primary-green);
             color: white;
-            padding: 30px;
+            border: none;
+            padding: 10px 15px;
+            margin: 0 5px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .language-btn:hover {
+            background: var(--dark-green);
+            transform: scale(1.1);
+        }
+
+        .language-btn.active {
+            background: var(--dark-green);
+        }
+
+        .demo-info {
+            background: linear-gradient(135deg, #2196F3, #64B5F6);
+            color: white;
+            padding: 20px;
+            margin: 20px 30px;
+            border-radius: 15px;
             text-align: center;
-            border-radius: 20px;
-            margin-top: 30px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
         }
-        
-        /* Dark theme */
-        .dark-theme {
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 50%, #2c3e50 100%);
-        }
-        
-        .dark-theme .status-card,
-        .dark-theme .charts-section,
-        .dark-theme .controls-section,
-        .dark-theme .info-card,
-        .dark-theme .export-section,
-        .dark-theme .plant-care {
-            background: rgba(52, 73, 94, 0.95);
-            color: white;
-        }
-        
-        .dark-theme .card-title,
-        .dark-theme .charts-section h2,
-        .dark-theme .control-group label,
-        .dark-theme .info-value {
-            color: #20c997;
-        }
-        
+
+        /* Mobile Responsive */
         @media (max-width: 768px) {
-            .container { padding: 10px; }
-            .header h1 { font-size: 2.5em; }
-            .dashboard { grid-template-columns: 1fr; }
-            .charts-grid { grid-template-columns: 1fr; }
-            .controls-grid { grid-template-columns: 1fr; }
-            .system-info { grid-template-columns: repeat(2, 1fr); }
+            body {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .dashboard {
+                grid-template-columns: 1fr;
+                padding: 20px;
+                gap: 15px;
+            }
+            
+            .chart-wrapper {
+                height: 300px;
+                padding: 15px;
+            }
+            
+            .card-value {
+                font-size: 1.8rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header {
+                padding: 20px;
+            }
+            
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .chart-wrapper {
+                height: 250px;
+                padding: 10px;
+            }
+            
+            .card-value {
+                font-size: 1.6rem;
+            }
+            
+            .language-btn {
+                padding: 8px 12px;
+                font-size: 0.9rem;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="weather-effects" id="weatherEffects"></div>
-    
+    <!-- Language Switcher -->
+    <div class="language-switcher">
+        <button class="language-btn active" onclick="setLanguage('en')" title="English">🇺🇸 EN</button>
+        <button class="language-btn" onclick="setLanguage('el')" title="Ελληνικά">🇬🇷 ΕΛ</button>
+    </div>
+
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>🌱 ULTIMATE Smart Greenhouse</h1>
-            <p>� Advanced IoT Monitoring System with ALL Features</p>
-            <p>💻 ESP32-S3 + BMP280 + AI-Powered Analytics</p>
+            <h1 id="title">🌱 Smart Greenhouse</h1>
+            <p id="subtitle">🚀 Advanced IoT Monitoring System</p>
+            <p id="hardware">💻 ESP32-S3 + BMP280 + BH1750 + Soil Sensor</p>
         </div>
         
-        <!-- Theme Selector -->
-        <div class="theme-selector">
-            <h3>🎨 Theme Selection</h3>
-            <button class="theme-btn active" onclick="setTheme('day')" title="Day Mode">☀️ Day Mode</button>
-            <button class="theme-btn" onclick="setTheme('night')" title="Night Mode">🌙 Night Mode</button>
-            <button class="theme-btn" onclick="setWeather('clear')" title="Clear Weather">☀️ Clear</button>
-            <button class="theme-btn" onclick="setWeather('rain')" title="Rainy Weather">🌧️ Rain</button>
-            <button class="theme-btn" onclick="setWeather('snow')" title="Snowy Weather">❄️ Snow</button>
+        <!-- Beta Notice -->
+        <div class="beta-notice">
+            <span id="beta-text">🧪 BETA DEMO - GitHub Pages Preview (No Live Data)</span>
+        </div>
+        
+        <!-- Demo Info -->
+        <div class="demo-info">
+            <h3 id="demo-title">📱 Mobile-Responsive Interface Demo</h3>
+            <p id="demo-desc">This is a preview of the Smart Greenhouse interface. For live sensor data, deploy to ESP32-S3 hardware.</p>
         </div>
         
         <!-- Status Dashboard -->
         <div class="dashboard">
             <div class="status-card">
                 <div class="card-icon">🌡️</div>
-                <div class="card-title">Temperature</div>
-                <div class="card-value" id="temperature">--.-°C</div>
-                <div class="card-status status-excellent" id="tempStatus">Loading...</div>
+                <div class="card-title" id="temp-title">Temperature</div>
+                <div class="card-value" id="temperature">24.5°C</div>
+                <div class="card-status status-demo" id="tempStatus">🟢 DEMO MODE</div>
             </div>
             
             <div class="status-card">
                 <div class="card-icon">🔽</div>
-                <div class="card-title">Pressure</div>
-                <div class="card-value" id="pressure">---- hPa</div>
-                <div class="card-status status-excellent" id="pressureStatus">Loading...</div>
+                <div class="card-title" id="pressure-title">Pressure</div>
+                <div class="card-value" id="pressure">1013 hPa</div>
+                <div class="card-status status-demo" id="pressureStatus">🟢 DEMO MODE</div>
             </div>
             
             <div class="status-card">
-                <div class="card-icon">�</div>
-                <div class="card-title">Soil Moisture</div>
-                <div class="card-value">--%</div>
-                <div class="card-status status-warning">Coming Soon</div>
+                <div class="card-icon">☀️</div>
+                <div class="card-title" id="light-title">Light Level</div>
+                <div class="card-value" id="light">450 lux</div>
+                <div class="card-status status-demo" id="lightStatus">🟢 DEMO MODE</div>
             </div>
             
             <div class="status-card">
-                <div class="card-icon">�</div>
-                <div class="card-title">Light Level</div>
-                <div class="card-value">---- lux</div>
-                <div class="card-status status-warning">Coming Soon</div>
+                <div class="card-icon">💧</div>
+                <div class="card-title" id="soil-title">Soil Moisture</div>
+                <div class="card-value" id="soil">65%</div>
+                <div class="card-status status-demo" id="soilStatus">🟢 DEMO MODE</div>
             </div>
         </div>
         
         <!-- Charts Section -->
-        <div class="charts-section">
-            <h2>📊 Real-Time Environmental Data</h2>
-            <div class="charts-grid">
-                <div class="chart-container">
-                    <div class="chart-title">🌡️ Temperature Trend (24h)</div>
-                    <canvas id="temperatureChart" width="400" height="200"></canvas>
-                </div>
-                <div class="chart-container">
-                    <div class="chart-title">🔽 Pressure Variations (24h)</div>
-                    <canvas id="pressureChart" width="400" height="200"></canvas>
-                </div>
+        <div class="chart-section">
+            <h2 id="charts-title" style="text-align: center; margin-bottom: 30px; color: #2E7D32;">📊 Historical Data Preview</h2>
+            
+            <div class="chart-wrapper">
+                <canvas id="temperatureChart"></canvas>
             </div>
-        </div>
-        
-        <!-- Controls Section -->
-        <div class="controls-section">
-            <h3>🎛️ Smart Controls & Alerts</h3>
-            <div class="controls-grid">
-                <div class="control-group">
-                    <label for="minTempInput">🔻 Min Temperature Alert (°C)</label>
-                    <input type="number" id="minTempInput" class="control-input" value="15" onchange="updateThresholds()">
-                </div>
-                <div class="control-group">
-                    <label for="maxTempInput">🔺 Max Temperature Alert (°C)</label>
-                    <input type="number" id="maxTempInput" class="control-input" value="30" onchange="updateThresholds()">
-                </div>
-                <div class="control-group">
-                    <label for="soundToggle">🔊 Sound Alerts</label>
-                    <button id="soundToggle" class="export-btn" onclick="toggleSound()">🔊 ON</button>
-                </div>
-                <div class="control-group">
-                    <label for="refreshRate">⚡ Refresh Rate (seconds)</label>
-                    <input type="number" id="refreshRate" class="control-input" value="2" min="1" max="60" onchange="updateRefreshRate()">
-                </div>
+            
+            <div class="chart-wrapper">
+                <canvas id="moistureChart"></canvas>
             </div>
-        </div>
-        
-        <!-- System Information -->
-        <div class="system-info">
-            <div class="info-card">
-                <div class="info-label">🌐 IP Address</div>
-                <div class="info-value" id="deviceIP">---.---.---.---</div>
-            </div>
-            <div class="info-card">
-                <div class="info-label">📶 Signal Strength</div>
-                <div class="info-value" id="signalStrength">--- dBm</div>
-            </div>
-            <div class="info-card">
-                <div class="info-label">⏰ System Uptime</div>
-                <div class="info-value" id="systemUptime">--- min</div>
-            </div>
-            <div class="info-card">
-                <div class="info-label">📊 Total Readings</div>
-                <div class="info-value" id="totalReadings">---</div>
-            </div>
-            <div class="info-card">
-                <div class="info-label">🔻 Min Temperature</div>
-                <div class="info-value" id="minTemp">--.-°C</div>
-            </div>
-            <div class="info-card">
-                <div class="info-label">🔺 Max Temperature</div>
-                <div class="info-value" id="maxTemp">--.-°C</div>
-            </div>
-        </div>
-        
-        <!-- Plant Care AI -->
-        <div class="plant-care">
-            <h3>🤖 AI Plant Care Recommendations</h3>
-            <div id="plantCareContent">
-                <div class="care-recommendation">
-                    <div class="care-icon">🌱</div>
-                    <div>Loading AI recommendations based on current conditions...</div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Export Section -->
-        <div class="export-section">
-            <h3>💾 Data Export & Analysis</h3>
-            <button class="export-btn" onclick="exportData('csv')">📄 Export CSV</button>
-            <button class="export-btn" onclick="exportData('json')">📋 Export JSON</button>
-            <button class="export-btn" onclick="generateReport()">📊 Generate Report</button>
-            <button class="export-btn" onclick="resetStats()">🔄 Reset Statistics</button>
-            <button class="export-btn" onclick="downloadLogs()">📝 Download Logs</button>
-        </div>
-        
-        <!-- Footer -->
-        <div class="footer">
-            <h3>🌱 ULTIMATE Smart Greenhouse Monitoring System</h3>
-            <p>🚀 Advanced IoT Solution with AI-Powered Plant Care | ESP32-S3 Powered | All Features Enabled</p>
-            <p>� Developed with Chart.js, ESP32-S3, BMP280 Sensor | 🌐 Hosted on GitHub Pages</p>
-            <p>⚡ Last Update: <span id="pageLoadTime"></span> | 🔋 Status: <span id="systemStatus">Active</span></p>
         </div>
     </div>
-    
-    <!-- Notification System -->
-    <div id="notification" class="notification"></div>
 
     <script>
-        // Global variables
-        let temperatureData = [];
-        let pressureData = [];
-        let timeLabels = [];
-        let temperatureChart, pressureChart;
-        let minTempThreshold = 15;
-        let maxTempThreshold = 30;
-        let soundEnabled = true;
-        let currentWeather = "clear";
-        let currentTheme = "day";
-        let updateInterval;
-        let refreshRate = 2000; // milliseconds
-        
-        // Initialize Charts
-        function initCharts() {
-            const tempCtx = document.getElementById('temperatureChart').getContext('2d');
-            const pressCtx = document.getElementById('pressureChart').getContext('2d');
+        // Language System
+        const translations = {
+            en: {
+                title: "🌱 Smart Greenhouse",
+                subtitle: "🚀 Advanced IoT Monitoring System", 
+                hardware: "💻 ESP32-S3 + BMP280 + BH1750 + Soil Sensor",
+                betaText: "🧪 BETA DEMO - GitHub Pages Preview (No Live Data)",
+                demoTitle: "📱 Mobile-Responsive Interface Demo",
+                demoDesc: "This is a preview of the Smart Greenhouse interface. For live sensor data, deploy to ESP32-S3 hardware.",
+                tempTitle: "Temperature",
+                pressureTitle: "Pressure", 
+                lightTitle: "Light Level",
+                soilTitle: "Soil Moisture",
+                chartsTitle: "📊 Historical Data Preview"
+            },
+            el: {
+                title: "🌱 Έξυπνο Θερμοκήπιο",
+                subtitle: "🚀 Προηγμένο Σύστημα IoT Παρακολούθησης",
+                hardware: "💻 ESP32-S3 + BMP280 + BH1750 + Αισθητήρας Εδάφους",
+                betaText: "🧪 BETA DEMO - Προεπισκόπηση GitHub Pages (Χωρίς Live Δεδομένα)",
+                demoTitle: "📱 Demo Mobile-Responsive Interface",
+                demoDesc: "Αυτή είναι μια προεπισκόπηση του Smart Greenhouse interface. Για live δεδομένα, κάντε deploy σε ESP32-S3 hardware.",
+                tempTitle: "Θερμοκρασία",
+                pressureTitle: "Πίεση",
+                lightTitle: "Επίπεδο Φωτός", 
+                soilTitle: "Υγρασία Εδάφους",
+                chartsTitle: "📊 Προεπισκόπηση Ιστορικών Δεδομένων"
+            }
+        };
+
+        let currentLang = 'en';
+
+        function setLanguage(lang) {
+            currentLang = lang;
             
-            temperatureChart = new Chart(tempCtx, {
+            // Update button states
+            document.querySelectorAll('.language-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update text content
+            const trans = translations[lang];
+            document.getElementById('title').textContent = trans.title;
+            document.getElementById('subtitle').textContent = trans.subtitle;
+            document.getElementById('hardware').textContent = trans.hardware;
+            document.getElementById('beta-text').textContent = trans.betaText;
+            document.getElementById('demo-title').textContent = trans.demoTitle;
+            document.getElementById('demo-desc').textContent = trans.demoDesc;
+            document.getElementById('temp-title').textContent = trans.tempTitle;
+            document.getElementById('pressure-title').textContent = trans.pressureTitle;
+            document.getElementById('light-title').textContent = trans.lightTitle;
+            document.getElementById('soil-title').textContent = trans.soilTitle;
+            document.getElementById('charts-title').textContent = trans.chartsTitle;
+        }
+
+        // Demo data simulation
+        function simulateData() {
+            const temp = (20 + Math.random() * 10).toFixed(1);
+            const pressure = (1000 + Math.random() * 50).toFixed(0);
+            const light = (300 + Math.random() * 400).toFixed(0);
+            const soil = (50 + Math.random() * 30).toFixed(0);
+            
+            document.getElementById('temperature').textContent = temp + '°C';
+            document.getElementById('pressure').textContent = pressure + ' hPa';
+            document.getElementById('light').textContent = light + ' lux';
+            document.getElementById('soil').textContent = soil + '%';
+        }
+
+        // Create demo charts
+        function createDemoCharts() {
+            const hours = [];
+            const tempData = [];
+            const soilData = [];
+            
+            for(let i = 24; i >= 0; i--) {
+                hours.push(i + 'h ago');
+                tempData.push(20 + Math.random() * 8);
+                soilData.push(50 + Math.random() * 25);
+            }
+            
+            // Temperature Chart
+            new Chart(document.getElementById('temperatureChart'), {
                 type: 'line',
                 data: {
-                    labels: timeLabels,
+                    labels: hours,
                     datasets: [{
                         label: 'Temperature (°C)',
-                        data: temperatureData,
-                        borderColor: '#e74c3c',
-                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                        borderWidth: 3,
-                        fill: true,
+                        data: tempData,
+                        borderColor: '#4CAF50',
+                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
                         tension: 0.4,
-                        pointBackgroundColor: '#e74c3c',
-                        pointBorderColor: '#ffffff',
-                        pointBorderWidth: 2,
-                        pointRadius: 5
+                        fill: true
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { display: false },
                         title: {
                             display: true,
-                            text: '🌡️ Temperature Monitoring'
+                            text: 'Temperature History (Demo)'
                         }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            grid: { color: 'rgba(0,0,0,0.1)' },
-                            title: { display: true, text: 'Temperature (°C)' }
-                        },
-                        x: {
-                            grid: { color: 'rgba(0,0,0,0.1)' },
-                            title: { display: true, text: 'Time' }
-                        }
-                    },
-                    interaction: {
-                        intersect: false,
-                        mode: 'index'
                     }
                 }
             });
             
-            pressureChart = new Chart(pressCtx, {
+            // Soil Moisture Chart
+            new Chart(document.getElementById('moistureChart'), {
                 type: 'line',
                 data: {
-                    labels: timeLabels,
+                    labels: hours,
                     datasets: [{
-                        label: 'Pressure (hPa)',
-                        data: pressureData,
-                        borderColor: '#27ae60',
-                        backgroundColor: 'rgba(39, 174, 96, 0.1)',
-                        borderWidth: 3,
-                        fill: true,
+                        label: 'Soil Moisture (%)',
+                        data: soilData,
+                        borderColor: '#2196F3',
+                        backgroundColor: 'rgba(33, 150, 243, 0.1)',
                         tension: 0.4,
-                        pointBackgroundColor: '#27ae60',
-                        pointBorderColor: '#ffffff',
-                        pointBorderWidth: 2,
-                        pointRadius: 5
+                        fill: true
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { display: false },
                         title: {
                             display: true,
-                            text: '🔽 Atmospheric Pressure'
+                            text: 'Soil Moisture History (Demo)'
                         }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: false,
-                            grid: { color: 'rgba(0,0,0,0.1)' },
-                            title: { display: true, text: 'Pressure (hPa)' }
-                        },
-                        x: {
-                            grid: { color: 'rgba(0,0,0,0.1)' },
-                            title: { display: true, text: 'Time' }
-                        }
-                    },
-                    interaction: {
-                        intersect: false,
-                        mode: 'index'
                     }
                 }
             });
         }
-        
-        // Create weather particles
-        function createParticles() {
-            const weatherEffects = document.getElementById('weatherEffects');
-            weatherEffects.innerHTML = '';
-            
-            if (currentWeather === 'rain') {
-                for (let i = 0; i < 50; i++) {
-                    const drop = document.createElement('div');
-                    drop.className = 'particle';
-                    drop.style.left = Math.random() * 100 + '%';
-                    drop.style.animationDelay = Math.random() * 2 + 's';
-                    drop.style.animationDuration = (Math.random() * 3 + 2) + 's';
-                    drop.style.width = '2px';
-                    drop.style.height = '10px';
-                    drop.style.background = 'rgba(173, 216, 230, 0.8)';
-                    drop.style.borderRadius = '1px';
-                    weatherEffects.appendChild(drop);
-                }
-            } else if (currentWeather === 'snow') {
-                for (let i = 0; i < 30; i++) {
-                    const flake = document.createElement('div');
-                    flake.className = 'particle';
-                    flake.style.left = Math.random() * 100 + '%';
-                    flake.style.animationDelay = Math.random() * 3 + 's';
-                    flake.style.animationDuration = (Math.random() * 5 + 3) + 's';
-                    flake.style.width = '6px';
-                    flake.style.height = '6px';
-                    flake.style.background = 'rgba(255, 255, 255, 0.9)';
-                    weatherEffects.appendChild(flake);
-                }
-            }
-        }
-        
-        // Set theme
-        function setTheme(theme) {
-            currentTheme = theme;
-            const body = document.body;
-            const themeButtons = document.querySelectorAll('.theme-btn');
-            
-            // Remove active class from all theme buttons
-            themeButtons.forEach(btn => btn.classList.remove('active'));
-            
-            if (theme === 'night') {
-                body.classList.add('dark-theme');
-                document.querySelector('.theme-btn[onclick*="night"]').classList.add('active');
-            } else {
-                body.classList.remove('dark-theme');
-                document.querySelector('.theme-btn[onclick*="day"]').classList.add('active');
-            }
-            
-            showNotification(`🎨 Theme changed to ${theme} mode`, 'success');
-        }
-        
-        // Set weather effects
-        function setWeather(weather) {
-            currentWeather = weather;
-            createParticles();
-            
-            const weatherButtons = document.querySelectorAll('.theme-btn');
-            weatherButtons.forEach(btn => {
-                if (btn.onclick && btn.onclick.toString().includes(weather)) {
-                    btn.classList.add('active');
-                } else if (btn.onclick && (btn.onclick.toString().includes('clear') || 
-                          btn.onclick.toString().includes('rain') || 
-                          btn.onclick.toString().includes('snow'))) {
-                    btn.classList.remove('active');
-                }
-            });
-            
-            showNotification(`🌤️ Weather effect: ${weather}`, 'success');
-        }
-        
-        // Show notification
-        function showNotification(message, type = 'success') {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.className = `notification ${type} show`;
-            
-            setTimeout(() => {
-                notification.classList.remove('show');
-            }, 3000);
-        }
-        
-        // Play alert sound
-        function playAlertSound() {
-            if (!soundEnabled) return;
-            
-            // Create audio context for beep sound
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const oscillator = audioContext.createOscillator();
-            const gainNode = audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(audioContext.destination);
-            
-            oscillator.frequency.value = 800;
-            oscillator.type = 'sine';
-            
-            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
-            
-            oscillator.start(audioContext.currentTime);
-            oscillator.stop(audioContext.currentTime + 0.5);
-        }
-        
-        // Update plant care recommendations
-        function updatePlantCare(temp, pressure) {
-            const recommendations = [];
-            
-            if (temp < 15) {
-                recommendations.push({
-                    icon: '🔥',
-                    text: 'Temperature too low! Consider adding heating or moving plants to warmer location.'
-                });
-            } else if (temp > 30) {
-                recommendations.push({
-                    icon: '❄️',
-                    text: 'Temperature too high! Increase ventilation or add cooling system.'
-                });
-            } else {
-                recommendations.push({
-                    icon: '✅',
-                    text: 'Perfect temperature range for most plants! Keep monitoring.'
-                });
-            }
-            
-            if (pressure < 1000) {
-                recommendations.push({
-                    icon: '🌧️',
-                    text: 'Low pressure detected. Weather change expected - monitor humidity.'
-                });
-            } else if (pressure > 1020) {
-                recommendations.push({
-                    icon: '☀️',
-                    text: 'High pressure - stable weather. Good conditions for plant growth.'
-                });
-            }
-            
-            const plantCareContent = document.getElementById('plantCareContent');
-            let html = '';
-            for (let i = 0; i < recommendations.length; i++) {
-                html += '<div class="care-recommendation">';
-                html += '<div class="care-icon">' + recommendations[i].icon + '</div>';
-                html += '<div>' + recommendations[i].text + '</div>';
-                html += '</div>';
-            }
-            plantCareContent.innerHTML = html;
-        }
-        
-        // Export data functions
-        function exportData(format) {
-            const data = {
-                timestamp: new Date().toISOString(),
-                temperatureData: temperatureData,
-                pressureData: pressureData,
-                timeLabels: timeLabels,
-                statistics: {
-                    minTemp: Math.min(...temperatureData),
-                    maxTemp: Math.max(...temperatureData),
-                    avgTemp: temperatureData.reduce((a, b) => a + b, 0) / temperatureData.length,
-                    totalReadings: temperatureData.length
-                }
-            };
-            
-            if (format === 'csv') {
-                let csv = 'Time,Temperature,Pressure\n';
-                for (let i = 0; i < timeLabels.length; i++) {
-                    csv += timeLabels[i] + ',' + temperatureData[i] + ',' + pressureData[i] + '\n';
-                }
-                downloadFile('greenhouse_data.csv', csv);
-            } else {
-                downloadFile('greenhouse_data.json', JSON.stringify(data, null, 2));
-            }
-            
-            showNotification(`📊 Data exported as ${format.toUpperCase()}!`, 'success');
-        }
-        
-        // Download file helper
-        function downloadFile(filename, content) {
-            const element = document.createElement('a');
-            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(content));
-            element.setAttribute('download', filename);
-            element.style.display = 'none';
-            document.body.appendChild(element);
-            element.click();
-            document.body.removeChild(element);
-        }
-        
-        // Generate report
-        function generateReport() {
-            showNotification('📊 Generating comprehensive report...', 'success');
-            setTimeout(() => {
-                showNotification('✅ Report generated successfully!', 'success');
-            }, 2000);
-        }
-        
-        // Reset statistics
-        function resetStats() {
-            if (confirm('Are you sure you want to reset all statistics?')) {
-                temperatureData.length = 0;
-                pressureData.length = 0;
-                timeLabels.length = 0;
-                temperatureChart.update();
-                pressureChart.update();
-                showNotification('🔄 Statistics reset successfully!', 'success');
-            }
-        }
-        
-        // Download logs
-        function downloadLogs() {
-            const logs = {
-                timestamp: new Date().toISOString(),
-                system: 'ESP32-S3 Smart Greenhouse',
-                logs: [
-                    { time: new Date().toISOString(), event: 'System startup', status: 'OK' },
-                    { time: new Date().toISOString(), event: 'Sensor initialization', status: 'OK' },
-                    { time: new Date().toISOString(), event: 'WiFi connection', status: 'OK' },
-                    { time: new Date().toISOString(), event: 'Web server started', status: 'OK' }
-                ]
-            };
-            downloadFile('system_logs.json', JSON.stringify(logs, null, 2));
-            showNotification('📝 System logs downloaded!', 'success');
-        }
-        
-        // Update thresholds
-        function updateThresholds() {
-            minTempThreshold = parseFloat(document.getElementById('minTempInput').value);
-            maxTempThreshold = parseFloat(document.getElementById('maxTempInput').value);
-            showNotification(`🎯 Temperature thresholds updated: ${minTempThreshold}°C - ${maxTempThreshold}°C`, 'success');
-        }
-        
-        // Toggle sound
-        function toggleSound() {
-            soundEnabled = !soundEnabled;
-            const soundToggle = document.getElementById('soundToggle');
-            soundToggle.textContent = soundEnabled ? '🔊 ON' : '🔇 OFF';
-            showNotification(`🔊 Sound alerts ${soundEnabled ? 'enabled' : 'disabled'}`, 'success');
-        }
-        
-        // Update refresh rate
-        function updateRefreshRate() {
-            const newRate = parseInt(document.getElementById('refreshRate').value);
-            refreshRate = newRate * 1000;
-            
-            if (updateInterval) {
-                clearInterval(updateInterval);
-                startAutoUpdate();
-            }
-            
-            showNotification(`⚡ Refresh rate updated to ${newRate} seconds`, 'success');
-        }
-        
-        // Simulate data update (since we can't connect to ESP32 from GitHub Pages)
-        function updateGreenhouse() {
-            // Simulate sensor data
-            const temp = 20 + Math.random() * 10; // 20-30°C
-            const pressure = 1000 + Math.random() * 50; // 1000-1050 hPa
-            
-            // Update UI
-            document.getElementById('temperature').textContent = temp.toFixed(1) + '°C';
-            document.getElementById('pressure').textContent = pressure.toFixed(1) + ' hPa';
-            document.getElementById('deviceIP').textContent = '46.176.29.7';
-            document.getElementById('signalStrength').textContent = '-45 dBm';
-            document.getElementById('systemUptime').textContent = Math.floor(Date.now() / 60000) + ' min';
-            document.getElementById('totalReadings').textContent = temperatureData.length;
-            
-            // Update temperature status
-            const tempStatus = document.getElementById('tempStatus');
-            if (temp >= minTempThreshold && temp <= maxTempThreshold) {
-                tempStatus.textContent = '✅ Optimal for plants';
-                tempStatus.className = 'card-status status-excellent';
-            } else if (temp < minTempThreshold) {
-                tempStatus.textContent = '🔻 Too cold';
-                tempStatus.className = 'card-status status-warning';
-                if (soundEnabled) playAlertSound();
-            } else {
-                tempStatus.textContent = '🔺 Too hot';
-                tempStatus.className = 'card-status status-warning';
-                if (soundEnabled) playAlertSound();
-            }
-            
-            // Update pressure status
-            const pressureStatus = document.getElementById('pressureStatus');
-            pressureStatus.textContent = '✅ Normal pressure';
-            pressureStatus.className = 'card-status status-excellent';
-            
-            // Update charts
-            const currentTime = new Date().toLocaleTimeString();
-            timeLabels.push(currentTime);
-            temperatureData.push(temp);
-            pressureData.push(pressure);
-            
-            // Keep only last 20 data points
-            if (timeLabels.length > 20) {
-                timeLabels.shift();
-                temperatureData.shift();
-                pressureData.shift();
-            }
-            
-            // Update min/max
-            document.getElementById('minTemp').textContent = Math.min(...temperatureData).toFixed(1) + '°C';
-            document.getElementById('maxTemp').textContent = Math.max(...temperatureData).toFixed(1) + '°C';
-            
-            temperatureChart.update();
-            pressureChart.update();
-            
-            // Update plant care
-            updatePlantCare(temp, pressure);
-            
-            console.log('🌱 Data updated - Temp:', temp.toFixed(1), '°C, Pressure:', pressure.toFixed(1), 'hPa');
-        }
-        
-        // Start auto-update
-        function startAutoUpdate() {
-            updateInterval = setInterval(updateGreenhouse, refreshRate);
-        }
-        
-        // Initialize everything
+
+        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('pageLoadTime').textContent = new Date().toLocaleString();
-            document.getElementById('systemStatus').textContent = '🟢 Active';
+            createDemoCharts();
+            simulateData();
             
-            // Initialize charts
-            initCharts();
-            
-            // Create initial weather effects
-            createParticles();
-            
-            // Start with first update
-            updateGreenhouse();
-            
-            // Start auto-update
-            startAutoUpdate();
-            
-            // Welcome message
-            setTimeout(() => {
-                showNotification('🌱 Welcome to ULTIMATE Smart Greenhouse!', 'success');
-            }, 1000);
-        });
-        
-        // Cleanup on page unload
-        window.addEventListener('beforeunload', function() {
-            if (updateInterval) {
-                clearInterval(updateInterval);
-            }
+            // Simulate data updates every 10 seconds
+            setInterval(simulateData, 10000);
         });
     </script>
 </body>

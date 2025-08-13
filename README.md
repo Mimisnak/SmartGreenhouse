@@ -1,53 +1,52 @@
-# 🌱 Smart Greenhouse - Advanced Plant Monitoring System
+# Smart Greenhouse Monitoring System
+
+A comprehensive IoT solution for monitoring environmental conditions in greenhouses using ESP32-S3 microcontroller and multiple sensors.
 
 [![ESP32-S3](https://img.shields.io/badge/ESP32-S3-blue)](https://www.espressif.com/en/products/socs/esp32-s3)
 [![BMP280](https://img.shields.io/badge/Sensor-BMP280-green)](https://www.bosch-sensortec.com/products/environmental-sensors/pressure-sensors/bmp280/)
 [![BH1750](https://img.shields.io/badge/Sensor-BH1750-yellow)](https://www.rohm.com/products/sensors-mems/ambient-light-sensor-ics/bh1750fvi)
 [![MIT License](https://img.shields.io/badge/License-MIT-red)](LICENSE)
-[![GitHub Pages](https://img.shields.io/badge/Demo-GitHub%20Pages-orange)](https://mimisnak.github.io/SmartGreenhouse/)
+[![Demo](https://img.shields.io/badge/Demo-Live-orange)](https://mimisnak.github.io/SmartGreenhouse/)
 
-> **Προηγμένο σύστημα παρακολούθησης φυτών με 4 αισθητήρες, mobile-responsive interface και real-time monitoring**
+## Live Demo
 
-## 🌐 **Live Demo (Beta)**
+Check out the web interface at: **[mimisnak.github.io/SmartGreenhouse](https://mimisnak.github.io/SmartGreenhouse/)**
 
-**🔗 [GitHub Pages Demo](https://mimisnak.github.io/SmartGreenhouse/)**
+*Note: The demo shows the interface with simulated data. For live sensor readings, deploy to ESP32 hardware.*
 
-> **⚠️ Beta Version**: Το GitHub Pages demo δείχνει το user interface χωρίς live sensor data.  
-> Για πλήρη λειτουργικότητα με real-time δεδομένα, χρησιμοποιήστε το ESP32 setup.
+## Overview
 
-**Demo Features:**
-- ✅ **Mobile-Responsive Design**: Δοκιμάστε το interface σε διαφορετικές οθόνες
-- ✅ **UI/UX Preview**: Δείτε το professional design και τα χρώματα
-- ✅ **Navigation Testing**: Δοκιμάστε την εναλλαγή γλωσσών (ΕΛ/EN)
-- ✅ **Layout Preview**: Προεπισκόπηση της διάταξης των αισθητήρων
-- ⚠️ **No Live Data**: Τα δεδομένα είναι mock data για demonstration
+This project monitors:
+- **Temperature & Humidity** using BMP280 sensor
+- **Light levels** with BH1750 light sensor  
+- **Soil moisture** via capacitive sensor
+- **Atmospheric pressure** for weather prediction
 
-## 📋 Περιεχόμενα
+All data is accessible through a responsive web interface that works on mobile devices.
 
-- [Εισαγωγή](#εισαγωγή)
-- [Χαρακτηριστικά](#χαρακτηριστικά)
-- [Hardware Requirements](#hardware-requirements)
-- [Συνδεσμολογία](#συνδεσμολογία)
-- [Software Installation](#software-installation)
-- [Configuration](#configuration)
-- [Web Interface](#web-interface)
-- [API Documentation](#api-documentation)
-- [Τεχνικές Λεπτομέρειες](#τεχνικές-λεπτομέρειες)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
-- [License](#license)
+## Quick Start
 
-## 🌟 Εισαγωγή
+1. **Hardware Setup**: Connect sensors to ESP32-S3 as per wiring guide
+2. **Flash Firmware**: Upload the code using PlatformIO
+3. **Configure WiFi**: Set your network credentials
+4. **Access Interface**: Connect to the device's IP address
 
-Το **Smart Greenhouse** είναι ένα ολοκληρωμένο σύστημα IoT για την παρακολούθηση περιβαλλοντικών συνθηκών σε θερμοκήπια ή εσωτερικούς χώρους καλλιέργειας. Χρησιμοποιεί το ESP32-S3 microcontroller με δυο υψηλής ακρίβειας αισθητήρες για να παρέχει real-time δεδομένα μέσω ενός modern web interface.
+## Key Features
 
-### 🎯 Σκοπός του Project
+### Hardware
+- ESP32-S3 DevKitC-1 N16R8 microcontroller
+- BMP280 temperature/pressure sensor (I2C)
+- BH1750 light sensor (I2C) 
+- Capacitive soil moisture sensor (ADC)
+- Automatic sensor detection and error handling
 
-- **Παρακολούθηση Θερμοκρασίας**: Συνεχής μέτρηση για βέλτιστες συνθήκες ανάπτυξης
-- **Μέτρηση Ατμοσφαιρικής Πίεσης**: Προβλέψεις καιρικών αλλαγών
-- **Φωτομέτρηση**: Βελτιστοποίηση φωτισμού φυτών
-- **Remote Monitoring**: Πρόσβαση από οπουδήποτε μέσω web browser
-- **Data Persistence**: Αποθήκευση ιστορικών δεδομένων
+### Software
+- Real-time web dashboard with live charts
+- Mobile-responsive design
+- 48-hour data history storage
+- Dual language support (English/Greek)
+- RESTful API endpoints
+- Automatic WiFi reconnection
 - **Mobile Responsive**: Πλήρης υποστήριξη κινητών συσκευών
 
 ## ✨ Χαρακτηριστικά
@@ -68,57 +67,30 @@
 - ✅ **Remote Data Transmission**: Αποστολή δεδομένων σε δημόσια IP κάθε 60 δευτερόλεπτα
 - ✅ **Dual Connectivity**: Τοπικός server + remote cloud integration
 
-### 📊 Data Management
-- ✅ **Server-Side Storage**: Αποθήκευση δεδομένων στο ESP32 (νέο!)
-- ✅ **48-hour Retention**: Διατήρηση ιστορικών δεδομένων για 48 ώρες
-- ✅ **30-minute Intervals**: Αυτόματη αποθήκευση κάθε 30 λεπτά
-- ✅ **Persistence**: Δεδομένα παραμένουν μετά από browser refresh
-- ✅ **Real-time Updates**: Ανανέωση δεδομένων κάθε 5 δευτερόλεπτα
-- ✅ **Automatic Cleanup**: Αυτόματος καθαρισμός παλιών δεδομένων
-- ✅ **Data Validation**: Έλεγχος εγκυρότητας δεδομένων
+## Hardware Requirements
 
-### 🎨 User Interface
-- ✅ **Modern Design**: Glassmorphism design με animations
-- ✅ **Dark/Light Theme**: Toggle μεταξύ θεμάτων
-- ✅ **Dual Language**: Ελληνικά και Αγγλικά
-- ✅ **Responsive Layout**: Optimized για όλες τις συσκευές
-- ✅ **Interactive Charts**: Chart.js με zoom και pan
-- ✅ **Beta Notification**: Εισαγωγική οθόνη με πληροφορίες developer
+### Components
 
-### 📈 Monitoring Features
-- ✅ **Sensor Status Indicators**: Real-time κατάσταση αισθητήρων
-- ✅ **Connection Status**: Παρακολούθηση συνδεσιμότητας
-- ✅ **Error Handling**: Graceful error management
-- ✅ **System Health**: Monitoring του συστήματος
+| Component | Model | Description | Approx. Cost |
+|-----------|--------|-------------|--------------|
+| Microcontroller | ESP32-S3 DevKitC-1 | 16MB Flash, 8MB PSRAM | $15-20 |
+| Temperature/Pressure | BMP280 | ±1°C, ±1hPa accuracy | $3-5 |
+| Light Sensor | BH1750 | 1-65535 lux range | $2-4 |
+| Soil Moisture | Capacitive Sensor | Corrosion resistant | $4-6 |
+| Wiring | Dupont Wires | I2C + analog connections | $1-2 |
 
-## 🛠 Hardware Requirements
+### Specifications
 
-### Κύρια Εξαρτήματα
+**ESP32-S3 N16R8:**
+- Dual-core Xtensa LX7 @ 240MHz
+- 512KB SRAM + 8MB PSRAM  
+- 16MB Flash storage
+- WiFi 802.11 b/g/n (2.4 GHz)
+- 45 GPIO pins, hardware I2C
 
-| Εξάρτημα | Μοντέλο | Περιγραφή | Κόστος (€) |
-|----------|---------|-----------|------------|
-| **Microcontroller** | ESP32-S3 N16R8 | 16MB Flash, 8MB PSRAM | ~15-20 |
-| **Θερμοκρασία/Πίεση** | BMP280 | Ακρίβεια ±1°C, ±1hPa | ~3-5 |
-| **Φωτισμός** | BH1750/GY-302 | 1-65535 lux range | ~2-4 |
-| **Υγρασία Εδάφους** | Capacitive Soil Sensor | Corrosion resistant, 0-100% | ~4-6 |
-| **Καλώδια** | Dupont Wires | I2C + Analog connections | ~1-2 |
-| **Breadboard** | Half-size | Προαιρετικό για testing | ~2-3 |
-
-### Τεχνικές Προδιαγραφές
-
-#### ESP32-S3 N16R8
-- **CPU**: Xtensa dual-core 32-bit LX7 @ 240MHz
-- **Memory**: 512KB SRAM + 8MB PSRAM
-- **Flash**: 16MB
-- **WiFi**: 802.11 b/g/n (2.4 GHz)
-- **GPIO**: 45 programmable pins
-- **I2C**: Hardware I2C support
-- **Power**: 3.3V operation
-
-#### BMP280 Sensor
-- **Pressure Range**: 300-1100 hPa
-- **Pressure Accuracy**: ±1 hPa
-- **Temperature Range**: -40 to +85°C
+**BMP280 Sensor:**
+- Pressure: 300-1100 hPa (±1 hPa accuracy)
+- Temperature: -40 to +85°C (±1°C accuracy)
 - **Temperature Accuracy**: ±1°C
 - **Interface**: I2C (0x76/0x77)
 - **Power**: 1.8-3.6V
@@ -145,60 +117,37 @@
 ```
 ESP32-S3          BMP280          BH1750/GY-302    Soil Moisture
 --------          ------          -------------    -------------
-GPIO 16 (SDA) --- SDA ----------- SDA              
-GPIO 17 (SCL) --- SCL ----------- SCL              
-GPIO 4 (ADC) ----------------------------- -------- AOUT
-3.3V ------------ VCC ----------- VCC ------------ VCC
-GND ------------- GND ----------- GND ------------ GND
-```
+**BH1750 Light Sensor:**
+- Light range: 1-65535 lux
+- Resolution: 1 lux
+- Accuracy: ±20%
 
-### Σχηματικό Διάγραμμα
+**Capacitive Soil Moisture Sensor:**
+- Voltage range: 0-3.3V (ESP32 ADC)
+- Output: Analog voltage (higher = drier soil)
+- Corrosion resistant design
+
+## Wiring
+
+### Connections
 
 ```
-                    ESP32-S3 N16R8
-                   ┌─────────────────┐
-                   │                 │
-    ┌─────────────▶│ GPIO 16 (SDA)   │
-    │              │ GPIO 17 (SCL)   │◀─────────────┐
-    │              │ GPIO 4 (ADC)    │◀───────────┐ │
-    │              │ 3.3V            │◀─────────┐ │ │
-    │              │ GND             │◀───────┐ │ │ │
-    │              └─────────────────┘        │ │ │ │
-    │                                         │ │ │ │
-    │               BMP280                    │ │ │ │
-    │              ┌─────────┐                │ │ │ │
-    └─────────────▶│ SDA     │                │ │ │ │
-                   │ SCL     │◀───────────────┘ │ │ │
-                   │ VCC     │◀─────────────────┘ │ │
-                   │ GND     │◀─────────────────────┘ │
-                   └─────────┘                       │
-                                                     │
-                   BH1750/GY-302                     │
-                  ┌─────────┐                        │
-    ┌────────────▶│ SDA     │                        │
-    │             │ SCL     │◀─────────────────────┐ │
-    │             │ VCC     │◀───────────────────┐ │ │
-    │             │ GND     │◀─────────────────┐ │ │ │
-    │             └─────────┘                  │ │ │ │
-    │                                          │ │ │ │
-    │           Capacitive Soil Sensor         │ │ │ │
-    │          ┌─────────┐                     │ │ │ │
-    │          │ AOUT    │◀────────────────────┘ │ │ │
-    │          │ VCC     │◀──────────────────────┘ │ │
-    │          │ GND     │◀────────────────────────┘ │
-    │          └─────────┘                           │
-    │                                                │
-    └────────────────────────────────────────────────┘
+ESP32-S3 Pin    BMP280    BH1750    Soil Sensor
+GPIO 16 (SDA) ── SDA ──── SDA
+GPIO 17 (SCL) ── SCL ──── SCL  
+GPIO 4 (ADC)  ─────────────────── AOUT
+3.3V ─────────── VCC ──── VCC ──── VCC
+GND ──────────── GND ──── GND ──── GND
 ```
 
 ### Pin Mapping
 
-| ESP32-S3 Pin | Λειτουργία | Σύνδεση |
-|--------------|------------|---------|
-| GPIO 16 | SDA (I2C Data) | BMP280 SDA + BH1750 SDA |
-| GPIO 17 | SCL (I2C Clock) | BMP280 SCL + BH1750 SCL |
-| GPIO 4 | ADC (Analog Input) | Soil Moisture AOUT |
-| 3.3V | Power Supply | All sensors VCC |
+| ESP32-S3 Pin | Function | Connection |
+|--------------|----------|------------|
+| GPIO 16 | SDA (I2C Data) | BMP280 & BH1750 SDA |
+| GPIO 17 | SCL (I2C Clock) | BMP280 & BH1750 SCL |
+| GPIO 4 | ADC Input | Soil Sensor AOUT |
+| 3.3V | Power | All sensors VCC |
 | GND | Ground | All sensors GND |
 
 ### I2C Addresses
@@ -228,77 +177,72 @@ GND ------------- GND ----------- GND ------------ GND
    ```
 
 ### Dependencies
+| BH1750 | 0x23 | 0x5C |
 
-Το project χρησιμοποιεί τις ακόλουθες βιβλιοθήκες (αυτόματη εγκατάσταση μέσω `platformio.ini`):
+## Installation
 
-```ini
-lib_deps = 
-    WiFi                    # ESP32 WiFi library
-    ESPAsyncWebServer       # Async web server
-    adafruit/Adafruit BMP280 Library@^2.6.8
-    ArduinoJson@^7.0.4      # JSON parsing
-    claws/BH1750@^1.3.0     # Light sensor library
-    Wire                    # I2C communication
+### Using PlatformIO (Recommended)
+
+1. **Clone the repository:**
+```bash
+git clone https://github.com/Mimisnak/SmartGreenhouse.git
+cd SmartGreenhouse
 ```
 
-### Build και Upload
-
+2. **Install dependencies:**
 ```bash
-# Build project
-pio run
+pio lib install
+```
 
-# Upload στο ESP32-S3
+3. **Configure WiFi:**
+Edit `src/main.cpp` and update WiFi credentials:
+```cpp
+const char* ssid = "YOUR_WIFI_NAME";
+const char* password = "YOUR_WIFI_PASSWORD";
+```
+
+4. **Build and upload:**
+```bash
 pio run --target upload
+```
 
-# Monitor serial output
+5. **Monitor output:**
+```bash
 pio device monitor
 ```
 
-### Alternative με Arduino IDE
+### Using Arduino IDE
 
-1. **Εγκατάσταση ESP32 Board Package**
-   - Προσθήκη URL: `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
-   - Board Manager → ESP32 → Install
+1. **Install ESP32 board support:**
+   - Add URL: `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
+   - Install ESP32 boards via Board Manager
 
-2. **Εγκατάσταση Libraries**
+2. **Install required libraries:**
    - Adafruit BMP280 Library
    - BH1750 Library by claws
    - ESPAsyncWebServer
    - ArduinoJson
 
-3. **Board Configuration**
-   - Board: "ESP32S3 Dev Module"
+3. **Configure board:**
+   - Board: "ESP32S3 Dev Module"  
    - USB CDC On Boot: "Enabled"
    - Flash Size: "16MB"
 
-## ⚙️ Configuration
+## Configuration
 
-### WiFi Setup
-
-Επεξεργασία του αρχείου `src/main.cpp`:
-
+### WiFi Settings
+Update credentials in `src/main.cpp`:
 ```cpp
-// WiFi credentials - ΑΛΛΑΞΤΕ ΤΑ ΣΤΟΙΧΕΙΑ ΣΑΣ
 const char* ssid = "YOUR_WIFI_NAME";
 const char* password = "YOUR_WIFI_PASSWORD";
 ```
 
-### I2C Pin Configuration
-
-Εάν θέλετε να χρησιμοποιήσετε διαφορετικά pins:
-
+### I2C Pins (optional)
+Modify pins in `src/main.cpp` if needed:
 ```cpp
-// I2C pins - Προσαρμόστε ανάλογα με τη συνδεσμολογία σας
-#define SDA_PIN 16  // Data pin
-#define SCL_PIN 17  // Clock pin
+#define SDA_PIN 16
+#define SCL_PIN 17
 ```
-
-### Sensor Configuration
-
-```cpp
-// BMP280 Settings
-bmp.setSampling(
-    Adafruit_BMP280::MODE_NORMAL,     // Operating mode
     Adafruit_BMP280::SAMPLING_X2,     // Temperature sampling
     Adafruit_BMP280::SAMPLING_X16,    // Pressure sampling
     Adafruit_BMP280::FILTER_X16,      // Filtering

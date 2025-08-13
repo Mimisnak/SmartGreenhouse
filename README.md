@@ -4,8 +4,23 @@
 [![BMP280](https://img.shields.io/badge/Sensor-BMP280-green)](https://www.bosch-sensortec.com/products/environmental-sensors/pressure-sensors/bmp280/)
 [![BH1750](https://img.shields.io/badge/Sensor-BH1750-yellow)](https://www.rohm.com/products/sensors-mems/ambient-light-sensor-ics/bh1750fvi)
 [![MIT License](https://img.shields.io/badge/License-MIT-red)](LICENSE)
+[![GitHub Pages](https://img.shields.io/badge/Demo-GitHub%20Pages-orange)](https://mimisnak.github.io/SmartGreenhouse/)
 
-> **Προηγμένο σύστημα παρακολούθησης φυτών με δυο αισθητήρες, web interface και real-time monitoring**
+> **Προηγμένο σύστημα παρακολούθησης φυτών με 4 αισθητήρες, mobile-responsive interface και real-time monitoring**
+
+## 🌐 **Live Demo (Beta)**
+
+**🔗 [GitHub Pages Demo](https://mimisnak.github.io/SmartGreenhouse/)**
+
+> **⚠️ Beta Version**: Το GitHub Pages demo δείχνει το user interface χωρίς live sensor data.  
+> Για πλήρη λειτουργικότητα με real-time δεδομένα, χρησιμοποιήστε το ESP32 setup.
+
+**Demo Features:**
+- ✅ **Mobile-Responsive Design**: Δοκιμάστε το interface σε διαφορετικές οθόνες
+- ✅ **UI/UX Preview**: Δείτε το professional design και τα χρώματα
+- ✅ **Navigation Testing**: Δοκιμάστε την εναλλαγή γλωσσών (ΕΛ/EN)
+- ✅ **Layout Preview**: Προεπισκόπηση της διάταξης των αισθητήρων
+- ⚠️ **No Live Data**: Τα δεδομένα είναι mock data για demonstration
 
 ## 📋 Περιεχόμενα
 

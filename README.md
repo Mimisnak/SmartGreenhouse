@@ -49,9 +49,9 @@ All data is accessible through a responsive web interface that works on mobile d
 - Automatic WiFi reconnection
 - **Mobile Responsive**: Πλήρης υποστήριξη κινητών συσκευών
 
-## ✨ Χαρακτηριστικά
+##  Χαρακτηριστικά
 
-### 🔧 Hardware Features
+###  Hardware Features
 - ✅ **Triple Sensor Support**: BMP280 + BH1750 + Soil Moisture
 - ✅ **Mixed Communication**: I2C + ADC interfaces
 - ✅ **Auto Sensor Detection**: Αυτόματη αναγνώριση αισθητήρων
@@ -59,7 +59,7 @@ All data is accessible through a responsive web interface that works on mobile d
 - ✅ **Corrosion Resistant**: Capacitive soil sensor χωρίς διάβρωση
 - ✅ **Watchdog Timer**: Αυτόματη επανεκκίνηση σε περίπτωση προβλήματος
 
-### 🌐 Network Features
+###  Network Features
 - ✅ **WiFi Auto-Reconnection**: Αυτόματη επανασύνδεση κάθε 30 δευτερόλεπτα
 - ✅ **Connection Monitoring**: Συνεχής παρακολούθηση δικτύου
 - ✅ **Network Resilience**: Ανθεκτικότητα σε διακοπές δικτύου
@@ -110,7 +110,7 @@ All data is accessible through a responsive web interface that works on mobile d
 - **Power**: 3.3-5V
 - **Features**: Corrosion resistant, waterproof
 
-## 🔌 Συνδεσμολογία
+##  Συνδεσμολογία
 
 ### I2C Bus Configuration
 
@@ -157,7 +157,7 @@ GND ──────────── GND ──── GND ──── GND
 | BMP280 | 0x76 | 0x77 |
 | BH1750 | 0x23 | - |
 
-## 💻 Software Installation
+##  Software Installation
 
 ### Προαπαιτούμενα
 
@@ -256,18 +256,18 @@ Modify pins in `src/main.cpp` if needed:
 #define WDT_TIMEOUT 60 // Timeout σε δευτερόλεπτα
 ```
 
-## 🌐 Web Interface
+##  Web Interface
 
 ### Κύρια Χαρακτηριστικά
 
-#### 🎨 Design Elements
+####  Design Elements
 
 - **Glassmorphism**: Σύγχρονο διαφανές design
 - **Gradient Backgrounds**: Δυναμικά χρωματικά σχήματα
 - **Smooth Animations**: Transitions και hover effects
 - **Cards Layout**: Οργανωμένη παρουσίαση δεδομένων
 
-#### 📱 Responsive Design
+####  Responsive Design
 
 ```css
 /* Mobile First Approach */
@@ -290,7 +290,7 @@ Modify pins in `src/main.cpp` if needed:
 }
 ```
 
-### 📊 Interactive Charts
+###  Interactive Charts
 
 Τα γραφήματα χρησιμοποιούν **Chart.js** με τα εξής χαρακτηριστικά:
 
@@ -320,7 +320,7 @@ var chartOptions = {
 };
 ```
 
-### 🎭 Theme System
+###  Theme System
 
 #### Light Theme
 - **Background**: Linear gradient (blue to purple)
@@ -340,7 +340,7 @@ function toggleTheme() {
 }
 ```
 
-### 🌍 Multi-language Support
+###  Multi-language Support
 
 Υποστήριξη Ελληνικών και Αγγλικών με:
 
@@ -358,7 +358,7 @@ function setLanguage(lang) {
 }
 ```
 
-## 📡 API Documentation
+##  API Documentation
 
 ### Endpoints
 
@@ -464,7 +464,7 @@ Sensors → I2C → ESP32 → JSON → HTTP → Browser → Charts → LocalStor
 - **XSS Protection**: Safe HTML generation
 - **Network Isolation**: WiFi network dependency
 
-## 🔍 Monitoring & Debugging
+##  Monitoring & Debugging
 
 ### Serial Monitor Output
 
@@ -507,7 +507,7 @@ Chart zoom to 24h for temp
 4. **Memory Usage**: Heap monitoring
 5. **Update Frequency**: Data consistency
 
-## ❗ Troubleshooting
+##  Troubleshooting
 
 ### Συχνά Προβλήματα
 
@@ -666,7 +666,7 @@ SmartGreenhouse/
 - **`backup/`**: Versioned code snapshots
 - **Documentation**: Comprehensive guides
 
-## 🚀 Deployment Options
+##  Deployment Options
 
 ### 1. Local Development
 ```bash
@@ -684,7 +684,7 @@ pio run --target upload
 - **Blynk**: Mobile app integration
 - **MQTT**: Broker communication
 
-## 🤝 Contributing
+##  Contributing
 
 ### Πώς να συνεισφέρετε
 
@@ -732,7 +732,7 @@ pio run --target upload
 | Light | ±20% | 1-65535 lux |
 | Soil Moisture | ±3% | 0-100% |
 
-## 📚 References & Resources
+##  References & Resources
 
 ### Documentation
 - [ESP32-S3 Datasheet](https://www.espressif.com/sites/default/files/documentation/esp32-s3_datasheet_en.pdf)
@@ -770,29 +770,29 @@ The above copyright notice and this permission notice shall be included in all
 copies or substantial portions of the Software.
 ```
 
-## 👨‍💻 Developer
+##  Developer
 
 **mimis.dev**  
-🌐 Website: [https://mimis.dev](https://mimis.dev)  
-📧 Email: contact@mimis.dev  
-🐙 GitHub: [@Mimisnak](https://github.com/Mimisnak)
+ Website: [https://mimis.dev](https://mimis.dev)  
+ Email: contact@mimis.dev  
+ GitHub: [@Mimisnak](https://github.com/Mimisnak)
 
 ---
 
-## 📞 Support
+##  Support
 
 Για questions, issues, ή contributions:
 
-- 🐛 **Issues**: [GitHub Issues](https://github.com/Mimisnak/SmartGreenhouse/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/Mimisnak/SmartGreenhouse/discussions)
-- 📧 **Email**: contact@mimis.dev
+-  **Issues**: [GitHub Issues](https://github.com/Mimisnak/SmartGreenhouse/issues)
+-  **Discussions**: [GitHub Discussions](https://github.com/Mimisnak/SmartGreenhouse/discussions)
+-  **Email**: contact@mimis.dev
 
 ---
 
 <div align="center">
 
-**🌱 Happy Growing! 🌱**
+** Happy Growing! **
 
-*Made with ❤️ by [mimis.dev](https://mimis.dev)*
+*Made with  by [mimis.dev](https://mimis.dev)*
 
 </div>

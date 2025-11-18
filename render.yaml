@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: greenhouse-backend
+    env: node
+    plan: free
+    buildCommand: cd cloud-backend && npm install && npm run init-db
+    startCommand: cd cloud-backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: JWT_SECRET
+        generateValue: true
+    healthCheckPath: /health
+    autoDeploy: true

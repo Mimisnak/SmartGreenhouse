@@ -206,10 +206,19 @@ const char* password = "YOUR_WIFI_PASSWORD";
 pio run --target upload
 ```
 
+> **VS Code note**: If you see  
+> `command 'platformio-ide.upload' not found`  
+> use the above CLI command from a terminal in the project folder and ensure the **PlatformIO IDE** extension is installed and enabled in VS Code.
+
 5. **Monitor output:**
 ```bash
 pio device monitor
 ```
+
+> **PowerShell note**: If you use the full path to `platformio.exe`, call it like this:
+> ```powershell
+> & "C:\Users\mimis\.platformio\penv\Scripts\platformio.exe" device monitor
+> ```
 
 ### Using Arduino IDE
 

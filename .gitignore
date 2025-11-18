@@ -32,9 +32,13 @@ wifi_config.h
 notes.txt
 TODO.md
 
-# Backup files
-*.bak
-*.backup
+# Backup files - KEEP .bak files as they contain important code/credentials
+# *.bak  # COMMENTED OUT - .bak files are important!
+# *.backup  # COMMENTED OUT - backup files may contain valuable info
+
+# Only ignore temporary backups with specific patterns
+*_temp.bak
+*_auto.backup
 
 # Windows
 *.lnk
@@ -61,3 +65,6 @@ __pycache__/
 # Local testing
 test_data/
 local_config/
+
+# Keep backup directory - contains important historical versions
+# backup/  # COMMENTED OUT - backups are important for version history!

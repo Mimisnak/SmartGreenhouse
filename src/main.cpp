@@ -7,6 +7,39 @@
 #include <ArduinoJson.h>
 #include <BH1750.h>
 #include <Wire.h>
+#include <HTTPClient.h>
+
+// --- Sensor Registry Structure ---
+enum SensorType {
+  SENSOR_BMP280_TEMP,
+  SENSOR_BMP280_PRESSURE,
+  SENSOR_BH1750_LIGHT,
+  SENSOR_SOIL_MOISTURE,
+  SENSOR_COUNT
+};
+
+struct SensorInfo {
+  const char* name;
+  const char* unit;
+  bool enabled;
+  bool available;
+  float lastValue;
+  unsigned long lastRead;
+};
+
+SensorInfo sensors[SENSOR_COUNT] = {
+  {"Temperature", "°C", true, false, 0.0, 0},
+  {"Pressure", "hPa", true, false, 0.0, 0},
+  {"Light", "lux", true, false, 0.0, 0},
+  {"Soil Moisture", "%", true, false, 0.0, 0}
+};
+
+// --- Cloud Configuration ---
+#define ENABLE_CLOUD_SYNC true  // Enable cloud sync
+const char* cloudApiUrl = "http://192.168.2.12:3000/api/telemetry";  // Change to your PC's IP
+const char* deviceId = "ESP32_DEMO_001";  // Must match device registered in cloud
+unsigned long lastCloudSync = 0;
+#define CLOUD_SYNC_INTERVAL 30000  // 30 seconds for testing
 
 // --- Soil Moisture Configuration ---
 // Adjust SOIL_PIN to your actual analog pin. Choose an ADC1 capable pin.
@@ -26,11 +59,16 @@ Adafruit_BMP280 bmp;
 BH1750 lightMeter;
 AsyncWebServer server(80);
 
+// Legacy global variables (kept for compatibility)
 float temperature = 0.0;
 float pressure = 0.0;
 float lightLevel = 0.0;
 float soilMoisture = -1.0; // percent, -1 means not initialized
 int soilRaw = -1;          // last raw ADC reading
+
+// Sensor management functions
+void updateSensorRegistry();
+void sendToCloud();
 
 // History storage - 48 hours of data (one reading every 5 minutes = 576 points)
 #define MAX_HISTORY_POINTS 576
@@ -300,6 +338,31 @@ void setupWebServer() {
     JsonDocument doc; doc["uptime_ms"] = millis(); doc["free_heap"] = ESP.getFreeHeap(); doc["light_sensor"] = (lightLevel!=-1); doc["soil_sensor"] = (soilMoisture>=0); doc["bmp_sensor"] = (temperature!=0.0 || pressure!=0.0); String res; serializeJson(doc,res); request->send(200,"application/json",res);
   logRequest(request,200);
   });
+  
+  // Sensor registry endpoint
+  server.on("/sensors", HTTP_GET, [](AsyncWebServerRequest *request){
+    JsonDocument doc;
+    JsonArray sensorArray = doc["sensors"].to<JsonArray>();
+    
+    for (int i = 0; i < SENSOR_COUNT; i++) {
+      JsonObject sensor = sensorArray.add<JsonObject>();
+      sensor["name"] = sensors[i].name;
+      sensor["unit"] = sensors[i].unit;
+      sensor["enabled"] = sensors[i].enabled;
+      sensor["available"] = sensors[i].available;
+      sensor["value"] = sensors[i].lastValue;
+      sensor["last_read"] = sensors[i].lastRead;
+    }
+    
+    doc["device_id"] = deviceId;
+    doc["cloud_sync_enabled"] = ENABLE_CLOUD_SYNC;
+    
+    String res;
+    serializeJson(doc, res);
+    logRequest(request,200);
+    request->send(200, "application/json", res);
+  });
+  
   // Lightweight plain HTML page (no heavy CSS) for quick remote check
   server.on("/simple", HTTP_GET, [](AsyncWebServerRequest *request){
     String p = F("<!DOCTYPE html><html><head><meta charset='utf-8'><title>Greenhouse Simple</title><meta name='viewport' content='width=device-width,initial-scale=1'><style>body{font-family:Arial;margin:10px;}table{border-collapse:collapse;}td,th{border:1px solid #888;padding:6px;}code{background:#eee;padding:2px 4px;border-radius:4px;}</style></head><body><h2>Smart Greenhouse - Simple</h2><div id='ip'></div><table><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody><tr><td>Temperature (°C)</td><td id='t'>--</td></tr><tr><td>Pressure (hPa)</td><td id='p'>--</td></tr><tr><td>Light (lux)</td><td id='l'>--</td></tr><tr><td>Soil (%)</td><td id='s'>--</td></tr><tr><td>Uptime (s)</td><td id='u'>--</td></tr></tbody></table><p>API: <code>/api</code>, Health: <code>/health</code>, Metrics: <code>/metrics</code></p><script>function g(id){return document.getElementById(id);}function upd(){fetch('/api').then(r=>r.json()).then(d=>{g('t').textContent=d.temperature.toFixed(1);g('p').textContent=d.pressure.toFixed(2);g('l').textContent=d.light>0?d.light.toFixed(0):'N/A';g('s').textContent=d.soil>=0?d.soil.toFixed(0):'N/A';g('u').textContent=(d.timestamp/1000).toFixed(0);});}upd();setInterval(upd,2000);</script></body></html>");
@@ -399,9 +462,18 @@ void loop() {
   // Add to history every 5 minutes
   addToHistory();
   
+  // Update sensor registry
+  updateSensorRegistry();
+  
   // Calibration and alerts
   calibrateSoilSensor();
   checkAlerts();
+  
+  // Cloud sync (if enabled)
+  if (ENABLE_CLOUD_SYNC && millis() - lastCloudSync > CLOUD_SYNC_INTERVAL) {
+    sendToCloud();
+    lastCloudSync = millis();
+  }
   
   Serial.print("Temperature: "); Serial.print(temperature); Serial.print(" °C, Pressure: "); Serial.print(pressure); Serial.print(" hPa");
   if (lightLevel != -1) { Serial.print(", Light: "); Serial.print(lightLevel); Serial.print(" lux"); } else { Serial.print(", Light: N/A"); }
@@ -443,4 +515,116 @@ void addToHistory() {
     Serial.print("/"); 
     Serial.println(MAX_HISTORY_POINTS);
   }
+}
+
+// Update sensor registry with current values
+void updateSensorRegistry() {
+  unsigned long now = millis();
+  
+  // Temperature sensor (BMP280)
+  if (temperature > -50 && temperature < 100) {
+    sensors[SENSOR_BMP280_TEMP].available = true;
+    sensors[SENSOR_BMP280_TEMP].lastValue = temperature;
+    sensors[SENSOR_BMP280_TEMP].lastRead = now;
+  } else {
+    sensors[SENSOR_BMP280_TEMP].available = false;
+  }
+  
+  // Pressure sensor (BMP280)
+  if (pressure > 300 && pressure < 1100) {
+    sensors[SENSOR_BMP280_PRESSURE].available = true;
+    sensors[SENSOR_BMP280_PRESSURE].lastValue = pressure;
+    sensors[SENSOR_BMP280_PRESSURE].lastRead = now;
+  } else {
+    sensors[SENSOR_BMP280_PRESSURE].available = false;
+  }
+  
+  // Light sensor (BH1750)
+  if (lightLevel >= 0) {
+    sensors[SENSOR_BH1750_LIGHT].available = true;
+    sensors[SENSOR_BH1750_LIGHT].lastValue = lightLevel;
+    sensors[SENSOR_BH1750_LIGHT].lastRead = now;
+  } else {
+    sensors[SENSOR_BH1750_LIGHT].available = false;
+  }
+  
+  // Soil moisture sensor
+  if (soilMoisture >= 0) {
+    sensors[SENSOR_SOIL_MOISTURE].available = true;
+    sensors[SENSOR_SOIL_MOISTURE].lastValue = soilMoisture;
+    sensors[SENSOR_SOIL_MOISTURE].lastRead = now;
+  } else {
+    sensors[SENSOR_SOIL_MOISTURE].available = false;
+  }
+}
+
+// Send telemetry data to cloud backend
+void sendToCloud() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Cloud sync skipped: WiFi not connected");
+    return;
+  }
+  
+  HTTPClient http;
+  http.begin(cloudApiUrl);
+  http.addHeader("Content-Type", "application/json");
+  
+  // Build JSON payload matching backend API format
+  JsonDocument doc;
+  doc["device_id"] = deviceId;
+  
+  JsonArray sensorData = doc["sensors"].to<JsonArray>();
+  
+  // Add temperature
+  if (sensors[SENSOR_BMP280_TEMP].available) {
+    JsonObject temp = sensorData.add<JsonObject>();
+    temp["sensor_type"] = "temperature";
+    temp["value"] = sensors[SENSOR_BMP280_TEMP].lastValue;
+    temp["unit"] = "°C";
+  }
+  
+  // Add pressure
+  if (sensors[SENSOR_BMP280_PRESSURE].available) {
+    JsonObject press = sensorData.add<JsonObject>();
+    press["sensor_type"] = "pressure";
+    press["value"] = sensors[SENSOR_BMP280_PRESSURE].lastValue;
+    press["unit"] = "hPa";
+  }
+  
+  // Add light
+  if (sensors[SENSOR_BH1750_LIGHT].available) {
+    JsonObject light = sensorData.add<JsonObject>();
+    light["sensor_type"] = "light";
+    light["value"] = sensors[SENSOR_BH1750_LIGHT].lastValue;
+    light["unit"] = "lux";
+  }
+  
+  // Add soil moisture
+  if (sensors[SENSOR_SOIL_MOISTURE].available) {
+    JsonObject soil = sensorData.add<JsonObject>();
+    soil["sensor_type"] = "soil_moisture";
+    soil["value"] = sensors[SENSOR_SOIL_MOISTURE].lastValue;
+    soil["unit"] = "%";
+  }
+  
+  String payload;
+  serializeJson(doc, payload);
+  
+  Serial.println("☁️ Sending to cloud: " + payload);
+  
+  int httpCode = http.POST(payload);
+  
+  if (httpCode > 0) {
+    Serial.printf("Cloud sync: HTTP %d\n", httpCode);
+    if (httpCode == 200 || httpCode == 201) {
+      String response = http.getString();
+      Serial.println("✓ Data sent successfully: " + response);
+    } else {
+      Serial.println("⚠️ Unexpected status code");
+    }
+  } else {
+    Serial.printf("Cloud sync failed: %s\n", http.errorToString(httpCode).c_str());
+  }
+  
+  http.end();
 }

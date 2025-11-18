@@ -1,9 +1,7 @@
 // API Configuration
 const API_CONFIG = {
-  // Change this to your deployed backend URL
-  // For local testing: 'http://localhost:3000'
-  // For production: 'https://your-app.onrender.com'
-  BASE_URL: 'https://greenhouse-api-mimis.onrender.com',
+  // Backend URL
+  BASE_URL: 'https://greenhouse-backend-e5or.onrender.com',
   
   // API endpoints
   ENDPOINTS: {

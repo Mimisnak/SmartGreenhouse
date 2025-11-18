@@ -36,7 +36,7 @@ SensorInfo sensors[SENSOR_COUNT] = {
 
 // --- Cloud Configuration ---
 #define ENABLE_CLOUD_SYNC true  // Enable cloud sync
-const char* cloudApiUrl = "http://192.168.2.12:3000/api/telemetry";  // Change to your PC's IP
+const char* cloudApiUrl = "https://greenhouse-backend-e5or.onrender.com/api/telemetry";
 const char* deviceId = "ESP32_DEMO_001";  // Must match device registered in cloud
 unsigned long lastCloudSync = 0;
 #define CLOUD_SYNC_INTERVAL 30000  // 30 seconds for testing

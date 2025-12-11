@@ -1,15 +1,13 @@
-// API Configuration - Local ESP32 Only (No Authentication)
-const API_CONFIG = {
-  // Note: Access ESP32 directly via local IP (e.g., http://192.168.1.100)
-  // No backend server required
-  BASE_URL: '',  // Empty - using direct ESP32 connection
-  
-  // Legacy endpoints (not used in local mode)
-  ENDPOINTS: {
-    TELEMETRY: '/api/telemetry',
-    DEVICES: '/api/devices'
-  }
+// Firebase Configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyDwwszw4AapfTp_dkdli48vsxOZXkZwqfo",
+  authDomain: "smartgreenhouse-fb494.firebaseapp.com",
+  databaseURL: "https://smartgreenhouse-fb494-default-rtdb.firebaseio.com",
+  projectId: "smartgreenhouse-fb494",
+  storageBucket: "smartgreenhouse-fb494.firebasestorage.app",
+  messagingSenderId: "655885291578",
+  appId: "1:655885291578:web:cd006776213994db2ea503"
 };
 
 // Export for use in script.js
-window.API_CONFIG = API_CONFIG;
+window.firebaseConfig = firebaseConfig;

@@ -8,6 +8,7 @@
 #include <BH1750.h>
 #include <Wire.h>
 #include <HTTPClient.h>
+#include <FirebaseESP32.h>
 
 // --- Sensor Registry Structure ---
 enum SensorType {
@@ -34,12 +35,22 @@ SensorInfo sensors[SENSOR_COUNT] = {
   {"Soil Moisture", "%", true, false, 0.0, 0}
 };
 
-// --- Cloud Configuration (DISABLED) ---
-#define ENABLE_CLOUD_SYNC false  // Cloud sync disabled - using local IP only
-const char* cloudApiUrl = "";  // Empty - not used
-const char* deviceId = "ESP32_LOCAL_001";
+// --- Cloud Configuration (Firebase) ---
+#define ENABLE_CLOUD_SYNC true  // Cloud sync enabled for remote access
+
+// Firebase Configuration
+#define FIREBASE_HOST "smartgreenhouse-fb494-default-rtdb.firebaseio.com"
+#define FIREBASE_AUTH "AIzaSyDwwszw4AapfTp_dkdli48vsxOZXkZwqfo"  // Use Web API Key for simple auth
+#define DEVICE_ID "ESP32-Greenhouse"
+
+FirebaseData firebaseData;
+FirebaseConfig firebaseConfig;
+FirebaseAuth firebaseAuth;
+
+const char* cloudApiUrl = "";  // Not used - using Firebase directly
+const char* deviceId = DEVICE_ID;
 unsigned long lastCloudSync = 0;
-#define CLOUD_SYNC_INTERVAL 30000
+#define CLOUD_SYNC_INTERVAL 30000  // Send data every 30 seconds
 
 // --- Soil Moisture Configuration ---
 // Adjust SOIL_PIN to your actual analog pin. Choose an ADC1 capable pin.
@@ -190,6 +201,15 @@ void setup() {
   Serial.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
   Serial.println(); Serial.println("WiFi connected!"); Serial.print("IP address: "); Serial.println(WiFi.localIP());
+  
+  // Initialize Firebase
+  Serial.println("Initializing Firebase...");
+  firebaseConfig.host = FIREBASE_HOST;
+  firebaseConfig.signer.tokens.legacy_token = FIREBASE_AUTH;
+  Firebase.begin(&firebaseConfig, &firebaseAuth);
+  Firebase.reconnectWiFi(true);
+  Serial.println("Firebase initialized!");
+  
   setupWebServer();
   server.begin();
   Serial.println("HTTP server started");
@@ -613,66 +633,24 @@ void sendToCloud() {
     return;
   }
   
-  HTTPClient http;
-  http.begin(cloudApiUrl);
-  http.addHeader("Content-Type", "application/json");
+  // Send to Firebase Realtime Database
+  String path = String("sensors/") + DEVICE_ID + "/latest";
   
-  // Build JSON payload matching backend API format
-  JsonDocument doc;
-  doc["device_id"] = deviceId;
+  FirebaseJson json;
+  json.add("timestamp", millis());
+  json.add("temperature", sensors[SENSOR_BMP280_TEMP].available ? sensors[SENSOR_BMP280_TEMP].lastValue : -999);
+  json.add("pressure", sensors[SENSOR_BMP280_PRESSURE].available ? sensors[SENSOR_BMP280_PRESSURE].lastValue : -999);
+  json.add("light", sensors[SENSOR_BH1750_LIGHT].available ? sensors[SENSOR_BH1750_LIGHT].lastValue : -999);
+  json.add("soilMoisture", sensors[SENSOR_SOIL_MOISTURE].available ? sensors[SENSOR_SOIL_MOISTURE].lastValue : -999);
   
-  JsonArray sensorData = doc["sensors"].to<JsonArray>();
-  
-  // Add temperature
-  if (sensors[SENSOR_BMP280_TEMP].available) {
-    JsonObject temp = sensorData.add<JsonObject>();
-    temp["sensor_type"] = "temperature";
-    temp["value"] = sensors[SENSOR_BMP280_TEMP].lastValue;
-    temp["unit"] = "°C";
-  }
-  
-  // Add pressure
-  if (sensors[SENSOR_BMP280_PRESSURE].available) {
-    JsonObject press = sensorData.add<JsonObject>();
-    press["sensor_type"] = "pressure";
-    press["value"] = sensors[SENSOR_BMP280_PRESSURE].lastValue;
-    press["unit"] = "hPa";
-  }
-  
-  // Add light
-  if (sensors[SENSOR_BH1750_LIGHT].available) {
-    JsonObject light = sensorData.add<JsonObject>();
-    light["sensor_type"] = "light";
-    light["value"] = sensors[SENSOR_BH1750_LIGHT].lastValue;
-    light["unit"] = "lux";
-  }
-  
-  // Add soil moisture
-  if (sensors[SENSOR_SOIL_MOISTURE].available) {
-    JsonObject soil = sensorData.add<JsonObject>();
-    soil["sensor_type"] = "soil_moisture";
-    soil["value"] = sensors[SENSOR_SOIL_MOISTURE].lastValue;
-    soil["unit"] = "%";
-  }
-  
-  String payload;
-  serializeJson(doc, payload);
-  
-  Serial.println("☁️ Sending to cloud: " + payload);
-  
-  int httpCode = http.POST(payload);
-  
-  if (httpCode > 0) {
-    Serial.printf("Cloud sync: HTTP %d\n", httpCode);
-    if (httpCode == 200 || httpCode == 201) {
-      String response = http.getString();
-      Serial.println("✓ Data sent successfully: " + response);
-    } else {
-      Serial.println("⚠️ Unexpected status code");
-    }
+  if (Firebase.setJSON(firebaseData, path.c_str(), json)) {
+    Serial.println("✅ Data sent to Firebase successfully");
   } else {
-    Serial.printf("Cloud sync failed: %s\n", http.errorToString(httpCode).c_str());
+    Serial.print("❌ Firebase error: ");
+    Serial.println(firebaseData.errorReason());
   }
   
-  http.end();
+  // Also store in history (optional - for charts)
+  String historyPath = String("sensors/") + DEVICE_ID + "/history/" + String(millis());
+  Firebase.setJSON(firebaseData, historyPath.c_str(), json);
 }

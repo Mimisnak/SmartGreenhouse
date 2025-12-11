@@ -458,7 +458,7 @@
         function updateCharts(entries) {
             if (!entries || entries.length === 0) return;
             
-            const maxPoints = 50;
+            const maxPoints = 600;  // 48 hours with 5-minute intervals
             const recentEntries = entries.slice(-maxPoints);
             
             const labels = recentEntries.map(e => {
@@ -505,8 +505,8 @@
             document.getElementById('connectionStatus').className = 'connection-status status-disconnected';
         });
         
-        // Load historical data for charts
-        const historyRef = query(ref(database, `sensors/${DEVICE_ID}/history`), orderByKey(), limitToLast(100));
+        // Load historical data for charts (48 hours)
+        const historyRef = query(ref(database, `sensors/${DEVICE_ID}/history`), orderByKey(), limitToLast(600));
         onValue(historyRef, (snapshot) => {
             const historyData = snapshot.val();
             if (historyData) {

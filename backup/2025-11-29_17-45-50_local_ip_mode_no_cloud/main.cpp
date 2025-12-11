@@ -36,10 +36,10 @@ SensorInfo sensors[SENSOR_COUNT] = {
 
 // --- Cloud Configuration (DISABLED) ---
 #define ENABLE_CLOUD_SYNC false  // Cloud sync disabled - using local IP only
-const char* cloudApiUrl = "";  // Empty - not used
-const char* deviceId = "ESP32_LOCAL_001";
-unsigned long lastCloudSync = 0;
-#define CLOUD_SYNC_INTERVAL 30000
+// const char* cloudApiUrl = "https://greenhouse-backend-e5or.onrender.com/api/telemetry";
+// const char* deviceId = "ESP32_DEMO_001";
+// unsigned long lastCloudSync = 0;
+// #define CLOUD_SYNC_INTERVAL 30000
 
 // --- Soil Moisture Configuration ---
 // Adjust SOIL_PIN to your actual analog pin. Choose an ADC1 capable pin.
@@ -52,17 +52,11 @@ unsigned long lastCloudSync = 0;
 const char* ssid = "Vodafone-E79546683";
 const char* password = "RLg2s6b73EfarXRx";
 
-// I2C Bus 0 pins (for BMP280)
 #define SDA_PIN 16
 #define SCL_PIN 17
 
-// I2C Bus 1 pins (for BH1750 - separate bus to avoid conflicts)
-#define SDA_PIN_1 8
-#define SCL_PIN_1 9
-
 Adafruit_BMP280 bmp;
-TwoWire I2C_1 = TwoWire(1);  // Second I2C bus
-BH1750 lightMeter(0x23);  // Initialize with address
+BH1750 lightMeter;
 AsyncWebServer server(80);
 
 // Legacy global variables (kept for compatibility)
@@ -135,55 +129,22 @@ void setup() {
   // Configure soil sensor pin with pull-down to prevent floating
   pinMode(SOIL_PIN, INPUT_PULLDOWN);
   
-  // Initialize I2C Bus 0 for BMP280
-  Wire.begin(SDA_PIN, SCL_PIN, 100000);
-  Serial.printf("I2C Bus 0 initialized: SDA=%d, SCL=%d (BMP280)\n", SDA_PIN, SCL_PIN);
-  
-  // Initialize I2C Bus 1 for BH1750
-  I2C_1.begin(SDA_PIN_1, SCL_PIN_1, 100000);
-  Serial.printf("I2C Bus 1 initialized: SDA=%d, SCL=%d (BH1750)\n", SDA_PIN_1, SCL_PIN_1);
-  
-  delay(100);
-  
-  // Scan I2C Bus 1 to find devices
-  Serial.println("Scanning I2C Bus 1 (GPIO 8/9)...");
+  Wire.begin(SDA_PIN, SCL_PIN);
+  Serial.println("I2C initialized with SDA=16, SCL=17");
+  Serial.println("Scanning I2C bus...");
   byte count = 0;
-  for (byte i = 1; i < 127; i++) {
-    I2C_1.beginTransmission(i);
-    byte error = I2C_1.endTransmission();
-    if (error == 0) {
-      Serial.printf("Found device at address 0x%02X\n", i);
-      count++;
-    }
-  }
-  Serial.printf("Found %d device(s) on Bus 1\n", count);
-  
-  // Scan I2C Bus 0 to see if BH1750 is there instead
-  Serial.println("Scanning I2C Bus 0 (GPIO 16/17)...");
-  count = 0;
-  for (byte i = 1; i < 127; i++) {
+  for (byte i = 8; i < 120; i++) {
     Wire.beginTransmission(i);
-    byte error = Wire.endTransmission();
-    if (error == 0) {
-      Serial.printf("Found device at address 0x%02X\n", i);
+    if (Wire.endTransmission() == 0) {
+      Serial.print("Found I2C device at address 0x");
+      if (i < 16) Serial.print("0");
+      Serial.println(i, HEX);
       count++;
     }
   }
-  Serial.printf("Found %d device(s) on Bus 0\n", count);
-  
-  Serial.println("Initializing sensors...");
-  
-  if (!initializeBMP280()) { 
-    Serial.println("Could not find a valid BMP280 sensor, check wiring! (continuing without BMP)"); 
-  }
-  
-  // Small delay between sensor initializations
-  delay(50);
-  
-  if (!initializeBH1750()) { 
-    Serial.println("BH1750 sensor not found - continuing without light sensor"); 
-    lightLevel = -1; 
-  }
+  Serial.print("Found "); Serial.print(count); Serial.println(" I2C device(s)\n");
+  if (!initializeBMP280()) { Serial.println("Could not find a valid BMP280 sensor, check wiring! (continuing without BMP)"); }
+  if (!initializeBH1750()) { Serial.println("BH1750 sensor not found - continuing without light sensor"); lightLevel = -1; }
   // Initial soil moisture read (will stay -1 if pin not connected / invalid)
   soilMoisture = readSoilMoisturePercent();
   WiFi.begin(ssid, password);
@@ -209,18 +170,9 @@ bool initializeBMP280() {
 }
 
 bool initializeBH1750() {
-  // Configure BH1750 to use second I2C bus
-  lightMeter.configure(BH1750::CONTINUOUS_HIGH_RES_MODE);
-  if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x23, &I2C_1)) {
-    Serial.println("BH1750 initialized successfully on Bus 1!");
-    return true;
-  }
-  // Try alternative address
-  if (lightMeter.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, 0x5C, &I2C_1)) {
-    Serial.println("BH1750 initialized successfully on Bus 1 (0x5C)!");
-    return true;
-  }
-  return false;
+  if (!lightMeter.begin()) return false;
+  Serial.println("BH1750 initialized successfully!");
+  return true;
 }
 
 float readSoilMoisturePercent() {

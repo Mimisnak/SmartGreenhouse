@@ -1,15 +1,13 @@
-// API Configuration
+// API Configuration - Local ESP32 Only (No Authentication)
 const API_CONFIG = {
-  // Backend URL
-  BASE_URL: 'https://greenhouse-backend-e5or.onrender.com',
+  // Note: Access ESP32 directly via local IP (e.g., http://192.168.1.100)
+  // No backend server required
+  BASE_URL: '',  // Empty - using direct ESP32 connection
   
-  // API endpoints
+  // Legacy endpoints (not used in local mode)
   ENDPOINTS: {
-    LOGIN: '/api/auth/login',
-    REGISTER: '/api/auth/register',
-    DEVICES: '/api/devices',
     TELEMETRY: '/api/telemetry',
-    COMMANDS: '/api/commands'
+    DEVICES: '/api/devices'
   }
 };
 

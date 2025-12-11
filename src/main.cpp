@@ -63,6 +63,12 @@ unsigned long lastCloudSync = 0;
 const char* ssid = "Vodafone-E79546683";
 const char* password = "RLg2s6b73EfarXRx";
 
+// NTP Configuration for accurate timestamps
+const char* ntpServer = "pool.ntp.org";
+const long gmtOffset_sec = 7200;  // GMT+2 (Greece winter)
+const int daylightOffset_sec = 3600;  // DST offset
+bool timeInitialized = false;
+
 // I2C Bus 0 pins (for BMP280)
 #define SDA_PIN 16
 #define SCL_PIN 17
@@ -201,6 +207,20 @@ void setup() {
   Serial.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
   Serial.println(); Serial.println("WiFi connected!"); Serial.print("IP address: "); Serial.println(WiFi.localIP());
+  
+  // Initialize NTP for accurate timestamps
+  Serial.println("Initializing NTP time...");
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  struct tm timeinfo;
+  if (getLocalTime(&timeinfo)) {
+    Serial.println("Time synchronized with NTP server");
+    Serial.print("Current time: ");
+    Serial.println(&timeinfo, "%Y-%m-%d %H:%M:%S");
+    timeInitialized = true;
+  } else {
+    Serial.println("Failed to sync time with NTP - timestamps may be incorrect");
+    timeInitialized = false;
+  }
   
   // Initialize Firebase
   Serial.println("Initializing Firebase...");
@@ -636,8 +656,13 @@ void sendToCloud() {
   // Send to Firebase Realtime Database
   String path = String("sensors/") + DEVICE_ID + "/latest";
   
+  // Get current Unix timestamp (milliseconds since 1970)
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  unsigned long long timestamp = (unsigned long long)(tv.tv_sec) * 1000ULL + (tv.tv_usec / 1000ULL);
+  
   FirebaseJson json;
-  json.add("timestamp", millis());
+  json.add("timestamp", timestamp);
   json.add("temperature", sensors[SENSOR_BMP280_TEMP].available ? sensors[SENSOR_BMP280_TEMP].lastValue : -999);
   json.add("pressure", sensors[SENSOR_BMP280_PRESSURE].available ? sensors[SENSOR_BMP280_PRESSURE].lastValue : -999);
   json.add("light", sensors[SENSOR_BH1750_LIGHT].available ? sensors[SENSOR_BH1750_LIGHT].lastValue : -999);
@@ -651,6 +676,6 @@ void sendToCloud() {
   }
   
   // Also store in history (optional - for charts)
-  String historyPath = String("sensors/") + DEVICE_ID + "/history/" + String(millis());
+  String historyPath = String("sensors/") + DEVICE_ID + "/history/" + String((unsigned long)timestamp);
   Firebase.setJSON(firebaseData, historyPath.c_str(), json);
 }

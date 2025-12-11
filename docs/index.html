@@ -1,208 +1,214 @@
 <!DOCTYPE html>
-<html lang="el">
+<html>
 <head>
+    <title>🌱 Smart Greenhouse Monitor</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌱 Smart Greenhouse</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        h1 { color: #333; font-size: 2.5em; margin-bottom: 10px; }
-        .subtitle { color: #666; font-size: 1.1em; }
-        .status {
-            display: inline-block;
-            padding: 8px 20px;
-            border-radius: 20px;
-            margin-top: 15px;
-            font-weight: bold;
-        }
-        .status.online { background: #4CAF50; color: white; }
-        .status.offline { background: #f44336; color: white; }
-        .status.loading { background: #FF9800; color: white; }
-        
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin: 30px 0;
-        }
-        .metric-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 15px;
-            text-align: center;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-            transition: transform 0.3s;
-        }
-        .metric-card:hover { transform: translateY(-5px); }
-        .metric-icon { font-size: 3em; margin-bottom: 10px; }
-        .metric-value { font-size: 3em; font-weight: bold; margin: 10px 0; }
-        .metric-label { font-size: 1.1em; opacity: 0.9; }
-        .metric-unit { font-size: 1.2em; opacity: 0.8; margin-top: 5px; }
-        
-        .info-box {
-            background: #f5f5f5;
-            padding: 20px;
-            border-radius: 10px;
-            margin-top: 30px;
-            text-align: center;
-        }
-        .info-box p { margin: 10px 0; color: #666; }
-        .info-box strong { color: #333; }
-        
-        .alert {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: #ff5722;
-            color: white;
-            padding: 15px 25px;
-            border-radius: 10px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-            animation: slideIn 0.3s;
-            z-index: 1000;
-        }
-        @keyframes slideIn {
-            from { transform: translateX(400px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-    </style>
+    <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css?v=2025081101">
 </head>
 <body>
+    <div class="weather-effects" id="weatherEffects"></div>
+    
     <div class="container">
-        <header>
+        <!-- Header -->
+        <div class="header">
             <h1>🌱 Smart Greenhouse</h1>
-            <p class="subtitle">Απομακρυσμένη Παρακολούθηση</p>
-            <div id="status" class="status loading">Σύνδεση...</div>
-        </header>
-
-        <div class="metrics-grid">
-            <div class="metric-card">
-                <div class="metric-icon">🌡️</div>
-                <div class="metric-value" id="temperature">--</div>
-                <div class="metric-label">Θερμοκρασία</div>
-                <div class="metric-unit">°C</div>
+            <p>🚀 Advanced IoT Monitoring System</p>
+            <p>💻 ESP32-S3 + BMP280 + BH1750 + Soil Sensor</p>
+        </div>
+        
+        <!-- Theme Selector -->
+        <div class="theme-selector">
+            <h3>🎨 Theme Selection</h3>
+            <button class="theme-btn active" onclick="setTheme('day')" title="Day Mode">☀️ Day Mode</button>
+            <button class="theme-btn" onclick="setTheme('night')" title="Night Mode">🌙 Night Mode</button>
+            <button class="theme-btn" onclick="setWeather('clear')" title="Clear Weather">☀️ Clear</button>
+            <button class="theme-btn" onclick="setWeather('rain')" title="Rainy Weather">🌧️ Rain</button>
+            <button class="theme-btn" onclick="setWeather('snow')" title="Snowy Weather">❄️ Snow</button>
+        </div>
+        
+        <!-- Status Dashboard -->
+        <div class="dashboard">
+            <div class="status-card">
+                <div class="card-icon">🌡️</div>
+                <div class="card-title">Temperature</div>
+                <div class="card-value" id="temperature">--.-°C</div>
+                <div class="card-status status-excellent" id="tempStatus">Loading...</div>
             </div>
-
-            <div class="metric-card">
-                <div class="metric-icon">🌊</div>
-                <div class="metric-value" id="pressure">----</div>
-                <div class="metric-label">Πίεση</div>
-                <div class="metric-unit">hPa</div>
+            
+            <div class="status-card">
+                <div class="card-icon">🔽</div>
+                <div class="card-title">Pressure</div>
+                <div class="card-value" id="pressure">---- hPa</div>
+                <div class="card-status status-excellent" id="pressureStatus">Loading...</div>
             </div>
-
-            <div class="metric-card">
-                <div class="metric-icon">💡</div>
-                <div class="metric-value" id="light">--</div>
-                <div class="metric-label">Φωτεινότητα</div>
-                <div class="metric-unit">lux</div>
+            
+            <div class="status-card">
+                <div class="card-icon">💧</div>
+                <div class="card-title">Soil Moisture</div>
+                <div class="card-value" id="soilMoisture">--%</div>
+                <div class="card-status status-excellent" id="soilStatus">Loading...</div>
             </div>
-
-            <div class="metric-card">
-                <div class="metric-icon">💧</div>
-                <div class="metric-value" id="soil">--</div>
-                <div class="metric-label">Υγρασία Εδάφους</div>
-                <div class="metric-unit">%</div>
+            
+            <div class="status-card">
+                <div class="card-icon">💡</div>
+                <div class="card-title">Light Level</div>
+                <div class="card-value" id="light">---- lux</div>
+                <div class="card-status status-excellent" id="lightStatus">Loading...</div>
             </div>
         </div>
-
-        <div class="info-box">
-            <p><strong>Τελευταία ενημέρωση:</strong> <span id="lastUpdate">--</span></p>
-            <p><strong>Device ID:</strong> ESP32-Greenhouse</p>
+        
+        <!-- Charts Section -->
+        <div class="charts-section">
+            <h2>� Real-Time Environmental Data</h2>
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <div class="chart-title">🌡️ Temperature Trend (24h)</div>
+                    <canvas id="temperatureChart" width="400" height="200"></canvas>
+                </div>
+                <div class="chart-container">
+                    <div class="chart-title">🔽 Pressure Variations (24h)</div>
+                    <canvas id="pressureChart" width="400" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Controls Section -->
+        <div class="controls-section">
+            <h3>🎛️ Smart Controls & Alerts</h3>
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label for="minTempInput">🔻 Min Temperature Alert (°C)</label>
+                    <input type="number" id="minTempInput" class="control-input" value="15" onchange="updateThresholds()">
+                </div>
+                <div class="control-group">
+                    <label for="maxTempInput">� Max Temperature Alert (°C)</label>
+                    <input type="number" id="maxTempInput" class="control-input" value="30" onchange="updateThresholds()">
+                </div>
+                <div class="control-group">
+                    <label for="soundToggle">🔊 Sound Alerts</label>
+                    <button id="soundToggle" class="export-btn" onclick="toggleSound()">🔊 ON</button>
+                </div>
+                <div class="control-group">
+                    <label for="refreshRate">⚡ Refresh Rate (seconds)</label>
+                    <input type="number" id="refreshRate" class="control-input" value="2" min="1" max="60" onchange="updateRefreshRate()">
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Information -->
+        <div class="system-info">
+            <div class="info-card">
+                <div class="info-label">🌐 IP Address</div>
+                <div class="info-value" id="deviceIP">---.---.---.---</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">📶 Signal Strength</div>
+                <div class="info-value" id="signalStrength">--- dBm</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">⏰ System Uptime</div>
+                <div class="info-value" id="systemUptime">--- min</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">📊 Total Readings</div>
+                <div class="info-value" id="totalReadings">---</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">� Min Temperature</div>
+                <div class="info-value" id="minTemp">--.-°C</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">🔺 Max Temperature</div>
+                <div class="info-value" id="maxTemp">--.-°C</div>
+            </div>
+        </div>
+        
+        <!-- Plant Care AI -->
+        <div class="plant-care">
+            <h3>🤖 AI Plant Care Recommendations</h3>
+            <div id="plantCareContent">
+                <div class="care-recommendation">
+                    <div class="care-icon">🌱</div>
+                    <div>Loading AI recommendations based on current conditions...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Export Section -->
+        <div class="export-section">
+            <h3>💾 Data Export & Analysis</h3>
+            <button class="export-btn" onclick="loadHistoricalData()">🔄 Reload History</button>
+            <button class="export-btn" onclick="exportData('csv')">📄 Export CSV</button>
+            <button class="export-btn" onclick="exportData('json')">📋 Export JSON</button>
+            <button class="export-btn" onclick="generateReport()">📊 Generate Report</button>
+            <button class="export-btn" onclick="resetStats()">🔄 Reset Statistics</button>
+            <button class="export-btn" onclick="downloadLogs()">� Download Logs</button>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <h3>🌱 ULTIMATE Smart Greenhouse Monitoring System</h3>
+            <p>🚀 Advanced IoT Solution with AI-Powered Plant Care | ESP32-S3 Powered | All Features Enabled</p>
+            <p>💻 Developed with Chart.js, ESP32-S3, BMP280 Sensor | 🌐 Hosted on GitHub Pages</p>
+            <p>⚡ Last Update: <span id="pageLoadTime"></span> | 🔋 Status: <span id="systemStatus">Active</span></p>
         </div>
     </div>
-
+    
+    <!-- Notification System -->
+    <div id="notification" class="notification"></div>
+    
     <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-        import { getDatabase, ref, onValue } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
-
-        // Firebase Configuration
+        import { getDatabase, ref, onValue, query, orderByKey, limitToLast } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js';
+        
         const firebaseConfig = {
             apiKey: "AIzaSyDwwszw4AapfTp_dkdli48vsxOZXkZwqfo",
             authDomain: "smartgreenhouse-fb494.firebaseapp.com",
             databaseURL: "https://smartgreenhouse-fb494-default-rtdb.firebaseio.com",
             projectId: "smartgreenhouse-fb494",
             storageBucket: "smartgreenhouse-fb494.firebasestorage.app",
-            messagingSenderId: "655885291578",
-            appId: "1:655885291578:web:cd006776213994db2ea503"
+            messagingSenderId: "389453073625",
+            appId: "1:389453073625:web:0d5b3fc2df4f2e1e15ca7b"
         };
-
-        // Initialize Firebase
+        
+        const DEVICE_ID = "ESP32-Greenhouse";
         const app = initializeApp(firebaseConfig);
         const database = getDatabase(app);
-
-        // Device ID
-        const DEVICE_ID = 'ESP32-Greenhouse';
-
-        // Listen for real-time updates
-        const latestRef = ref(database, `sensors/${DEVICE_ID}/latest`);
         
+        // Listen to Firebase
+        const latestRef = ref(database, `sensors/${DEVICE_ID}/latest`);
         onValue(latestRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                updateDisplay(data);
-                document.getElementById('status').textContent = '🟢 Συνδεδεμένο';
-                document.getElementById('status').className = 'status online';
-            } else {
-                document.getElementById('status').textContent = '⚠️ Περιμένει δεδομένα...';
-                document.getElementById('status').className = 'status loading';
+                // Update current values directly
+                document.getElementById('temperature').textContent = data.temperature ? data.temperature.toFixed(2) + '°C' : '--.-°C';
+                document.getElementById('pressure').textContent = data.pressure ? data.pressure.toFixed(2) + ' hPa' : '---- hPa';
+                document.getElementById('soilMoisture').textContent = data.soilMoisture !== undefined ? data.soilMoisture.toFixed(1) + '%' : '--%';
+                document.getElementById('light').textContent = data.light !== undefined && data.light > 0 ? data.light.toFixed(0) + ' lux' : 'N/A';
             }
-        }, (error) => {
-            console.error('Firebase error:', error);
-            document.getElementById('status').textContent = '🔴 Σφάλμα σύνδεσης';
-            document.getElementById('status').className = 'status offline';
         });
-
-        function updateDisplay(data) {
-            document.getElementById('temperature').textContent = 
-                data.temperature ? data.temperature.toFixed(2) : '--';
-            document.getElementById('pressure').textContent = 
-                data.pressure ? data.pressure.toFixed(2) : '----';
-            document.getElementById('light').textContent = 
-                data.light ? data.light.toFixed(2) : '--';
-            document.getElementById('soil').textContent = 
-                data.soilMoisture !== undefined ? data.soilMoisture.toFixed(0) : '--';
-            
-            const timestamp = data.timestamp ? new Date(data.timestamp).toLocaleString('el-GR') : '--';
-            document.getElementById('lastUpdate').textContent = timestamp;
-
-            // Add alerts if needed
-            if (data.temperature > 35) {
-                showAlert('🔥 Υψηλή θερμοκρασία!');
+        
+        // Load history for charts
+        const historyRef = query(ref(database, `sensors/${DEVICE_ID}/history`), orderByKey(), limitToLast(100));
+        onValue(historyRef, (snapshot) => {
+            const historyData = snapshot.val();
+            if (historyData && window.updateFirebaseCharts) {
+                const entries = Object.entries(historyData).map(([key, value]) => ({
+                    timestamp: parseInt(key),
+                    ...value
+                })).sort((a, b) => a.timestamp - b.timestamp);
+                
+                window.updateFirebaseCharts(entries);
             }
-            if (data.soilMoisture < 20) {
-                showAlert('💧 Χαμηλή υγρασία εδάφους!');
-            }
-        }
-
-        let alertTimeout;
-        function showAlert(message) {
-            clearTimeout(alertTimeout);
-            const alertDiv = document.createElement('div');
-            alertDiv.className = 'alert';
-            alertDiv.textContent = message;
-            document.body.appendChild(alertDiv);
-            alertTimeout = setTimeout(() => alertDiv.remove(), 5000);
-        }
+        });
+        
+        console.log('🔥 Firebase connected!');
     </script>
+    
+    <script src="script.js"></script>
 </body>
 </html>

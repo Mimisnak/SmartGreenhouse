@@ -50,7 +50,7 @@ FirebaseAuth firebaseAuth;
 const char* cloudApiUrl = "";  // Not used - using Firebase directly
 const char* deviceId = DEVICE_ID;
 unsigned long lastCloudSync = 0;
-#define CLOUD_SYNC_INTERVAL 30000  // Send data every 30 seconds
+#define CLOUD_SYNC_INTERVAL 5000  // Send data every 5 seconds (live updates)
 
 // --- Soil Moisture Configuration ---
 // Adjust SOIL_PIN to your actual analog pin. Choose an ADC1 capable pin.

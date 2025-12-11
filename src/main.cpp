@@ -657,9 +657,16 @@ void sendToCloud() {
   String path = String("sensors/") + DEVICE_ID + "/latest";
   
   // Get current Unix timestamp (milliseconds since 1970)
-  struct timeval tv;
-  gettimeofday(&tv, NULL);
-  unsigned long long timestamp = (unsigned long long)(tv.tv_sec) * 1000ULL + (tv.tv_usec / 1000ULL);
+  time_t now;
+  time(&now);
+  unsigned long long timestamp = (unsigned long long)now * 1000ULL;
+  
+  // Debug: Print timestamp to verify NTP is working
+  Serial.print("📅 Timestamp: ");
+  Serial.print((unsigned long)timestamp);
+  Serial.print(" ms (");
+  Serial.print(ctime(&now));
+  Serial.print(")");
   
   FirebaseJson json;
   json.add("timestamp", timestamp);

@@ -201,6 +201,32 @@ function updateUI(data) {
     console.log('✅ [v20251217172200] UI UPDATE COMPLETE');
 }
 
+// ============================================
+// CONTROL FUNCTIONS (for buttons/inputs)
+// ============================================
+
+window.updateThresholds = function() {
+    const minTemp = document.getElementById('minTempInput')?.value;
+    const maxTemp = document.getElementById('maxTempInput')?.value;
+    console.log('🎚️ Temperature thresholds updated:', minTemp, '-', maxTemp);
+};
+
+window.toggleSound = function() {
+    const button = document.getElementById('soundToggle');
+    if (button.textContent.includes('ON')) {
+        button.textContent = '🔇 OFF';
+        console.log('🔇 Sound alerts disabled');
+    } else {
+        button.textContent = '🔊 ON';
+        console.log('🔊 Sound alerts enabled');
+    }
+};
+
+window.updateRefreshRate = function() {
+    const rate = document.getElementById('refreshRate')?.value;
+    console.log('⚡ Refresh rate updated:', rate, 'seconds');
+};
+
 function updateCharts(data) {
     // Don't update charts if timestamp hasn't changed
     if (data.timestamp && data.timestamp === lastTimestamp) {

@@ -18,12 +18,12 @@ const database = getDatabase(app);
 // CHART INITIALIZATION
 // ============================================
 
-let temperatureChart, pressureChart;
+let temperatureChart, pressureChart, lightChart, soilMoistureChart;
 let lastTimestamp = 0; // Track last update to prevent duplicates
 let lastUpdateTime = null; // Track when last data arrived
 
 function initializeCharts() {
-    console.log('📊 Initializing charts for 48h history...');
+    console.log('📊 Initializing 4 charts for 48h history...');
     
     const chartConfig = {
         responsive: true,
@@ -90,6 +90,54 @@ function initializeCharts() {
     } else {
         console.error('❌ pressureChart canvas not found');
     }
+    
+    // Light Chart
+    const lightCanvas = document.getElementById('lightChart');
+    if (lightCanvas) {
+        const lightCtx = lightCanvas.getContext('2d');
+        lightChart = new Chart(lightCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Light (lux)',
+                    data: [],
+                    borderColor: '#f39c12',
+                    backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: chartConfig
+        });
+        console.log('✅ Light chart created');
+    } else {
+        console.error('❌ lightChart canvas not found');
+    }
+    
+    // Soil Moisture Chart
+    const soilCanvas = document.getElementById('soilMoistureChart');
+    if (soilCanvas) {
+        const soilCtx = soilCanvas.getContext('2d');
+        soilMoistureChart = new Chart(soilCtx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Soil Moisture (%)',
+                    data: [],
+                    borderColor: '#27ae60',
+                    backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: chartConfig
+        });
+        console.log('✅ Soil Moisture chart created');
+    } else {
+        console.error('❌ soilMoistureChart canvas not found');
+    }
 }
 
 // ============================================
@@ -139,8 +187,16 @@ function loadHistoryData() {
             pressureChart.data.labels = [];
             pressureChart.data.datasets[0].data = [];
         }
+        if (lightChart) {
+            lightChart.data.labels = [];
+            lightChart.data.datasets[0].data = [];
+        }
+        if (soilMoistureChart) {
+            soilMoistureChart.data.labels = [];
+            soilMoistureChart.data.datasets[0].data = [];
+        }
         
-        // Add sampled history points to charts
+        // Add sampled history points to all 4 charts
         sampledPoints.forEach(point => {
             const date = new Date(point.timestamp * 1000);
             const timeLabel = date.toLocaleString('el-GR', {
@@ -158,13 +214,23 @@ function loadHistoryData() {
                 pressureChart.data.labels.push(timeLabel);
                 pressureChart.data.datasets[0].data.push(point.pressure);
             }
+            if (lightChart && point.light !== undefined && point.light >= 0) {
+                lightChart.data.labels.push(timeLabel);
+                lightChart.data.datasets[0].data.push(point.light);
+            }
+            if (soilMoistureChart && point.soilMoisture !== undefined) {
+                soilMoistureChart.data.labels.push(timeLabel);
+                soilMoistureChart.data.datasets[0].data.push(point.soilMoisture);
+            }
         });
         
-        // Update charts
+        // Update all 4 charts
         if (temperatureChart) temperatureChart.update('none');
         if (pressureChart) pressureChart.update('none');
+        if (lightChart) lightChart.update('none');
+        if (soilMoistureChart) soilMoistureChart.update('none');
         
-        console.log('✅ Charts loaded with 48h sampled history (~96 points)');
+        console.log('✅ All 4 charts loaded with 48h sampled history (~96 points)');
     }, { onlyOnce: true });
 }
 
@@ -384,6 +450,36 @@ function updateCharts(data) {
         
         pressureChart.update('none'); // No animation
         console.log('✅ Pressure chart updated (', pressureChart.data.labels.length, 'points)');
+    }
+    
+    // Update Light Chart - add new point and filter old ones
+    if (lightChart && data.light !== undefined && data.light >= 0) {
+        lightChart.data.labels.push(timeLabel);
+        lightChart.data.datasets[0].data.push(data.light);
+        
+        // Keep last 100 points max
+        while (lightChart.data.labels.length > 100) {
+            lightChart.data.labels.shift();
+            lightChart.data.datasets[0].data.shift();
+        }
+        
+        lightChart.update('none'); // No animation
+        console.log('✅ Light chart updated (', lightChart.data.labels.length, 'points)');
+    }
+    
+    // Update Soil Moisture Chart - add new point and filter old ones
+    if (soilMoistureChart && data.soilMoisture !== undefined) {
+        soilMoistureChart.data.labels.push(timeLabel);
+        soilMoistureChart.data.datasets[0].data.push(data.soilMoisture);
+        
+        // Keep last 100 points max
+        while (soilMoistureChart.data.labels.length > 100) {
+            soilMoistureChart.data.labels.shift();
+            soilMoistureChart.data.datasets[0].data.shift();
+        }
+        
+        soilMoistureChart.update('none'); // No animation
+        console.log('✅ Soil Moisture chart updated (', soilMoistureChart.data.labels.length, 'points)');
     }
     
     // UNLOCK SCROLL - restore scroll position and re-enable scrolling

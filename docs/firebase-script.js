@@ -366,6 +366,11 @@ function updateCharts(data) {
         
         temperatureChart.update('none'); // No animation to prevent flickering
         console.log('✅ Temperature chart updated (', temperatureChart.data.labels.length, 'points)');
+        
+        // Restore scroll AFTER chart renders
+        requestAnimationFrame(() => {
+            window.scrollTo(scrollX, scrollY);
+        });
     }
 
     // Update Pressure Chart - add new point and filter old ones
@@ -381,10 +386,12 @@ function updateCharts(data) {
         
         pressureChart.update('none'); // No animation
         console.log('✅ Pressure chart updated (', pressureChart.data.labels.length, 'points)');
+        
+        // Restore scroll AFTER chart renders
+        requestAnimationFrame(() => {
+            window.scrollTo(scrollX, scrollY);
+        });
     }
-    
-    // Restore scroll position to prevent auto-scroll
-    window.scrollTo(scrollX, scrollY);
 }
 
 // ============================================

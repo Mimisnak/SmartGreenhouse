@@ -19,6 +19,7 @@ const database = getDatabase(app);
 // ============================================
 
 let temperatureChart, pressureChart;
+let lastTimestamp = 0; // Track last update to prevent duplicates
 
 function initializeCharts() {
     console.log('📊 Initializing charts...');
@@ -129,20 +130,33 @@ function updateUI(data) {
     
     // Update temperature
     const tempElement = document.getElementById('temperature');
+    console.log('Temperature element:', tempElement);
     if (tempElement && data.temperature !== undefined) {
-        tempElement.textContent = data.temperature.toFixed(1) + '°C';
+        const tempValue = data.temperature.toFixed(1) + '°C';
+        tempElement.textContent = tempValue;
+        console.log('✅ Temperature updated to:', tempValue);
+    } else {
+        console.warn('❌ Temperature element not found or no data');
     }
 
     // Update pressure
     const pressElement = document.getElementById('pressure');
+    console.log('Pressure element:', pressElement);
     if (pressElement && data.pressure !== undefined) {
-        pressElement.textContent = data.pressure.toFixed(0) + ' hPa';
+        const pressValue = data.pressure.toFixed(0) + ' hPa';
+        pressElement.textContent = pressValue;
+        console.log('✅ Pressure updated to:', pressValue);
+    } else {
+        console.warn('❌ Pressure element not found or no data');
     }
 
     // Update soil moisture
     const soilElement = document.getElementById('soilMoisture');
+    console.log('Soil element:', soilElement);
     if (soilElement && data.soilMoisture !== undefined) {
-        soilElement.textContent = data.soilMoisture.toFixed(0) + '%';
+        const soilValue = data.soilMoisture.toFixed(0) + '%';
+        soilElement.textContent = soilValue;
+        console.log('✅ Soil updated to:', soilValue);
         
         // Update soil status
         const soilStatus = document.getElementById('soilStatus');
@@ -158,20 +172,40 @@ function updateUI(data) {
                 soilStatus.className = 'card-status status-excellent';
             }
         }
+    } else {
+        console.warn('❌ Soil element not found or no data');
     }
 
     // Update light (handle N/A)
     const lightElement = document.getElementById('light');
+    console.log('Light element:', lightElement);
     if (lightElement) {
         if (data.light !== undefined && data.light !== null && data.light >= 0) {
-            lightElement.textContent = data.light.toFixed(0) + ' lux';
+            const lightValue = data.light.toFixed(0) + ' lux';
+            lightElement.textContent = lightValue;
+            console.log('✅ Light updated to:', lightValue);
         } else {
             lightElement.textContent = 'N/A';
+            console.log('✅ Light set to N/A');
         }
+    } else {
+        console.warn('❌ Light element not found');
     }
+    
+    console.log('✅ UI update complete');
 }
 
 function updateCharts(data) {
+    // Don't update charts if timestamp hasn't changed
+    if (data.timestamp && data.timestamp === lastTimestamp) {
+        console.log('⏭️ Skipping chart update - same timestamp');
+        return;
+    }
+    
+    if (data.timestamp) {
+        lastTimestamp = data.timestamp;
+    }
+    
     const now = new Date().toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' });
 
     // Update Temperature Chart
@@ -185,6 +219,7 @@ function updateCharts(data) {
             temperatureChart.data.datasets[0].data.shift();
         }
         temperatureChart.update('none');
+        console.log('📈 Temperature chart updated');
     }
 
     // Update Pressure Chart
@@ -198,6 +233,7 @@ function updateCharts(data) {
             pressureChart.data.datasets[0].data.shift();
         }
         pressureChart.update('none');
+        console.log('📈 Pressure chart updated');
     }
 }
 

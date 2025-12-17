@@ -1,11 +1,18 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+html {
+    scroll-behavior: auto !important; /* Prevent smooth scrolling */
+    overflow-x: hidden;
+}
+
 body { 
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
     background: linear-gradient(135deg, #8BC34A 0%, #689F38 50%, #558B2F 100%);
     min-height: 100vh;
     animation: backgroundShift 12s ease-in-out infinite;
     line-height: 1.6;
+    scroll-behavior: auto !important; /* Prevent smooth scrolling */
+    overflow-x: hidden;
 }
 
 @keyframes backgroundShift {

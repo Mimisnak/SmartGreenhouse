@@ -222,7 +222,7 @@ function startFirebaseListeners() {
 // ============================================
 
 function updateUI(data) {
-    console.log('🔄 [v20251217181000] Updating UI with:', data);
+    console.log('🔄 [v20251217182000] Updating UI with:', data);
     
     // Update last update timestamp
     lastUpdateTime = new Date();
@@ -296,7 +296,7 @@ function updateUI(data) {
         console.error('❌ CRITICAL: light element NOT FOUND');
     }
     
-    console.log('✅ [v20251217181000] UI UPDATE COMPLETE - Live with 48h sampled history');
+    console.log('✅ [v20251217182000] UI UPDATE COMPLETE - No auto-scroll');
 }
 
 // ============================================
@@ -326,6 +326,10 @@ window.updateRefreshRate = function() {
 };
 
 function updateCharts(data) {
+    // Save current scroll position to prevent auto-scroll
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    
     // Don't update charts if timestamp hasn't changed
     if (data.timestamp && data.timestamp === lastTimestamp) {
         console.log('⏭️ Skipping chart update - same timestamp:', lastTimestamp);
@@ -382,6 +386,9 @@ function updateCharts(data) {
         pressureChart.update('none'); // No animation
         console.log('✅ Pressure chart updated (', pressureChart.data.labels.length, 'points)');
     }
+    
+    // Restore scroll position to prevent auto-scroll
+    window.scrollTo(scrollX, scrollY);
 }
 
 // ============================================

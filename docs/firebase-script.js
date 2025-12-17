@@ -89,12 +89,20 @@ function initializeCharts() {
 // FIREBASE DATA LISTENERS
 // ============================================
 
+let updateInProgress = false; // Prevent simultaneous updates
+
 function startFirebaseListeners() {
     console.log('🔥 Starting Firebase listeners...');
     
     // Listen to the entire ESP32-Greenhouse node
     const sensorsRef = ref(database, 'sensors/ESP32-Greenhouse');
     onValue(sensorsRef, (snapshot) => {
+        // Skip if an update is already in progress
+        if (updateInProgress) {
+            console.log('⏭️ Update already in progress, skipping...');
+            return;
+        }
+        
         const rawData = snapshot.val();
         console.log('📊 Firebase raw data:', rawData);
         
@@ -110,14 +118,18 @@ function startFirebaseListeners() {
         
         // Verify we have temperature before updating
         if (sensorData.temperature !== undefined) {
+            updateInProgress = true;
             updateUI(sensorData);
             updateCharts(sensorData);
+            // Release lock after a short delay
+            setTimeout(() => { updateInProgress = false; }, 500);
         } else {
             console.error('❌ No temperature data found in:', sensorData);
             console.log('Available keys:', Object.keys(sensorData));
         }
     }, (error) => {
         console.error('❌ Firebase error:', error);
+        updateInProgress = false;
     });
 }
 
@@ -192,17 +204,21 @@ function updateUI(data) {
 function updateCharts(data) {
     // Don't update charts if timestamp hasn't changed
     if (data.timestamp && data.timestamp === lastTimestamp) {
-        console.log('⏭️ Skipping chart update - same timestamp');
+        console.log('⏭️ Skipping chart update - same timestamp:', lastTimestamp);
         return;
     }
     
     if (data.timestamp) {
+        console.log('📈 New timestamp:', data.timestamp, 'Previous:', lastTimestamp);
         lastTimestamp = data.timestamp;
+    } else {
+        console.log('⚠️ No timestamp in data, skipping chart update');
+        return;
     }
     
-    const now = new Date().toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' });
+    const now = new Date().toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-    // Update Temperature Chart
+    // Update Temperature Chart (no animation to prevent flickering)
     if (temperatureChart && data.temperature !== undefined) {
         temperatureChart.data.labels.push(now);
         temperatureChart.data.datasets[0].data.push(data.temperature);
@@ -212,11 +228,11 @@ function updateCharts(data) {
             temperatureChart.data.labels.shift();
             temperatureChart.data.datasets[0].data.shift();
         }
-        temperatureChart.update('none');
-        console.log('📈 Temperature chart updated');
+        temperatureChart.update('none'); // 'none' = no animation
+        console.log('✅ Temperature chart updated');
     }
 
-    // Update Pressure Chart
+    // Update Pressure Chart (no animation)
     if (pressureChart && data.pressure !== undefined) {
         pressureChart.data.labels.push(now);
         pressureChart.data.datasets[0].data.push(data.pressure);
@@ -226,8 +242,8 @@ function updateCharts(data) {
             pressureChart.data.labels.shift();
             pressureChart.data.datasets[0].data.shift();
         }
-        pressureChart.update('none');
-        console.log('📈 Pressure chart updated');
+        pressureChart.update('none'); // 'none' = no animation
+        console.log('✅ Pressure chart updated');
     }
 }
 

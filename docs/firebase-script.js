@@ -125,6 +125,15 @@ function loadHistoryData() {
         
         console.log('📊 Filtered to', dataPoints.length, 'points in last 48h');
         
+        // SAMPLE DATA: Take every 6th point (30min intervals instead of 5min)
+        // This gives us ~96 points for 48h instead of 576 (more readable!)
+        const sampledPoints = dataPoints.filter((_, index) => index % 6 === 0);
+        console.log('📉 Sampled to', sampledPoints.length, 'points for better readability');
+        // SAMPLE DATA: Take every 6th point (30min intervals instead of 5min)
+        // This gives us ~96 points for 48h instead of 576 (more readable!)
+        const sampledPoints = dataPoints.filter((_, index) => index % 6 === 0);
+        console.log('📉 Sampled to', sampledPoints.length, 'points for better readability');
+        
         // Clear existing chart data
         if (temperatureChart) {
             temperatureChart.data.labels = [];
@@ -135,8 +144,8 @@ function loadHistoryData() {
             pressureChart.data.datasets[0].data = [];
         }
         
-        // Add all history points to charts
-        dataPoints.forEach(point => {
+        // Add sampled history points to charts
+        sampledPoints.forEach(point => {
             const date = new Date(point.timestamp * 1000);
             const timeLabel = date.toLocaleString('el-GR', {
                 month: '2-digit',
@@ -159,7 +168,7 @@ function loadHistoryData() {
         if (temperatureChart) temperatureChart.update('none');
         if (pressureChart) pressureChart.update('none');
         
-        console.log('✅ Charts loaded with 48h history');
+        console.log('✅ Charts loaded with 48h sampled history (~96 points)');
     }, { onlyOnce: true });
 }
 
@@ -213,7 +222,7 @@ function startFirebaseListeners() {
 // ============================================
 
 function updateUI(data) {
-    console.log('🔄 [v20251217180000] Updating UI with:', data);
+    console.log('🔄 [v20251217181000] Updating UI with:', data);
     
     // Update last update timestamp
     lastUpdateTime = new Date();
@@ -287,7 +296,7 @@ function updateUI(data) {
         console.error('❌ CRITICAL: light element NOT FOUND');
     }
     
-    console.log('✅ [v20251217180000] UI UPDATE COMPLETE - Live with 48h history');
+    console.log('✅ [v20251217181000] UI UPDATE COMPLETE - Live with 48h sampled history');
 }
 
 // ============================================
@@ -349,8 +358,8 @@ function updateCharts(data) {
         temperatureChart.data.labels.push(timeLabel);
         temperatureChart.data.datasets[0].data.push(data.temperature);
         
-        // Remove data older than 48h (keep max 576 points for 48h @ 5min intervals)
-        while (temperatureChart.data.labels.length > 576) {
+        // Keep last 100 points max (for live updates on top of history)
+        while (temperatureChart.data.labels.length > 100) {
             temperatureChart.data.labels.shift();
             temperatureChart.data.datasets[0].data.shift();
         }
@@ -364,8 +373,8 @@ function updateCharts(data) {
         pressureChart.data.labels.push(timeLabel);
         pressureChart.data.datasets[0].data.push(data.pressure);
         
-        // Remove data older than 48h (keep max 576 points)
-        while (pressureChart.data.labels.length > 576) {
+        // Keep last 100 points max
+        while (pressureChart.data.labels.length > 100) {
             pressureChart.data.labels.shift();
             pressureChart.data.datasets[0].data.shift();
         }

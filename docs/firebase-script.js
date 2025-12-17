@@ -129,10 +129,6 @@ function loadHistoryData() {
         // This gives us ~96 points for 48h instead of 576 (more readable!)
         const sampledPoints = dataPoints.filter((_, index) => index % 6 === 0);
         console.log('📉 Sampled to', sampledPoints.length, 'points for better readability');
-        // SAMPLE DATA: Take every 6th point (30min intervals instead of 5min)
-        // This gives us ~96 points for 48h instead of 576 (more readable!)
-        const sampledPoints = dataPoints.filter((_, index) => index % 6 === 0);
-        console.log('📉 Sampled to', sampledPoints.length, 'points for better readability');
         
         // Clear existing chart data
         if (temperatureChart) {

@@ -62,14 +62,14 @@
         
         <!-- Charts Section -->
         <div class="charts-section">
-            <h2>� Real-Time Environmental Data</h2>
-            <div class="charts-grid">
-                <div class="chart-container">
-                    <div class="chart-title">🌡️ Temperature Trend (24h)</div>
+            <h2>📊 Real-Time Environmental Data</h2>
+            <div class="charts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-top: 20px;">
+                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); height: 300px;">
+                    <div class="chart-title" style="font-weight: bold; margin-bottom: 10px; color: #333;">🌡️ Temperature Trend (24h)</div>
                     <canvas id="temperatureChart" width="400" height="200"></canvas>
                 </div>
-                <div class="chart-container">
-                    <div class="chart-title">🔽 Pressure Variations (24h)</div>
+                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); height: 300px;">
+                    <div class="chart-title" style="font-weight: bold; margin-bottom: 10px; color: #333;">🔽 Pressure Variations (24h)</div>
                     <canvas id="pressureChart" width="400" height="200"></canvas>
                 </div>
             </div>

@@ -63,21 +63,21 @@
         <!-- Charts Section -->
         <div class="charts-section">
             <h2>📊 Ανάλυση Ιστορικών Δεδομένων (24ωρο)</h2>
-            <div class="charts-grid">
-                <div class="chart-container">
-                    <div class="chart-title">🌡️ Ιστορικό Θερμοκρασίας (24 ώρες)</div>
+            <div class="charts-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-top: 20px;">
+                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <div class="chart-title" style="font-weight: bold; margin-bottom: 15px; color: #2c3e50; font-size: 16px;">🌡️ Ιστορικό Θερμοκρασίας (24 ώρες)</div>
                     <canvas id="temperatureChart" width="400" height="200"></canvas>
                 </div>
-                <div class="chart-container">
-                    <div class="chart-title">🔽 Ιστορικό Πίεσης (24 ώρες)</div>
+                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <div class="chart-title" style="font-weight: bold; margin-bottom: 15px; color: #2c3e50; font-size: 16px;">🔽 Ιστορικό Πίεσης (24 ώρες)</div>
                     <canvas id="pressureChart" width="400" height="200"></canvas>
                 </div>
-                <div class="chart-container">
-                    <div class="chart-title">💧 Ιστορικό Φωτισμού (24 ώρες)</div>
+                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <div class="chart-title" style="font-weight: bold; margin-bottom: 15px; color: #2c3e50; font-size: 16px;">💧 Ιστορικό Φωτισμού (24 ώρες)</div>
                     <canvas id="lightChart" width="400" height="200"></canvas>
                 </div>
-                <div class="chart-container">
-                    <div class="chart-title">💡 Ιστορικό Υγρασίας Εδάφους (24 ώρες)</div>
+                <div class="chart-container" style="background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <div class="chart-title" style="font-weight: bold; margin-bottom: 15px; color: #2c3e50; font-size: 16px;">💡 Ιστορικό Υγρασίας Εδάφους (24 ώρες)</div>
                     <canvas id="soilMoistureChart" width="400" height="200"></canvas>
                 </div>
             </div>
@@ -168,7 +168,7 @@
     <!-- Notification System -->
     <div id="notification" class="notification"></div>
     
-    <!-- FINAL VERSION v20251217190000 - 4 CHARTS LIKE LOCAL ESP32 -->
-    <script type="module" src="firebase-script.js?v=20251217190000"></script>
+    <!-- FINAL VERSION v20251217191000 - 4 CHARTS WITH INLINE STYLES -->
+    <script type="module" src="firebase-script.js?v=20251217191000"></script>
 </body>
 </html>

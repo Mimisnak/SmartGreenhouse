@@ -91,17 +91,35 @@ function initializeCharts() {
 function startFirebaseListeners() {
     console.log('🔥 Starting Firebase listeners...');
     
-    // Listen to current sensor data - use 'latest' path
-    const sensorsRef = ref(database, 'sensors/ESP32-Greenhouse/latest');
+    // Listen to the entire ESP32-Greenhouse node
+    const sensorsRef = ref(database, 'sensors/ESP32-Greenhouse');
     onValue(sensorsRef, (snapshot) => {
         const data = snapshot.val();
-        if (data) {
-            console.log('📊 Firebase data:', data);
-            updateUI(data);
-            updateCharts(data);
-        } else {
-            console.warn('⚠️ No data at latest path');
+        console.log('📊 Firebase raw data:', data);
+        
+        if (!data) {
+            console.warn('⚠️ No data available');
+            return;
         }
+        
+        // Check if data has 'latest' property
+        let sensorData;
+        if (data.latest) {
+            console.log('✅ Using data.latest');
+            sensorData = data.latest;
+        } else if (data.temperature !== undefined) {
+            // Data is directly at this level
+            console.log('✅ Using direct data');
+            sensorData = data;
+        } else {
+            console.error('❌ Cannot find sensor data structure');
+            console.log('Available keys:', Object.keys(data));
+            return;
+        }
+        
+        console.log('📊 Sensor data to display:', sensorData);
+        updateUI(sensorData);
+        updateCharts(sensorData);
     }, (error) => {
         console.error('❌ Firebase error:', error);
     });

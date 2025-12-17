@@ -20,9 +20,10 @@ const database = getDatabase(app);
 
 let temperatureChart, pressureChart;
 let lastTimestamp = 0; // Track last update to prevent duplicates
+let lastUpdateTime = null; // Track when last data arrived
 
 function initializeCharts() {
-    console.log('📊 Initializing charts...');
+    console.log('📊 Initializing charts for 48h history...');
     
     const chartConfig = {
         responsive: true,
@@ -32,6 +33,12 @@ function initializeCharts() {
             legend: { display: true, position: 'top' }
         },
         scales: {
+            x: {
+                title: {
+                    display: true,
+                    text: '🕐 Time (Last 48 Hours)'
+                }
+            },
             y: { beginAtZero: false }
         }
     };
@@ -91,10 +98,78 @@ function initializeCharts() {
 
 let updateInProgress = false; // Prevent simultaneous updates
 
+function loadHistoryData() {
+    console.log('📚 Loading 48h history from Firebase...');
+    
+    // Calculate 48h ago timestamp
+    const now = Date.now() / 1000; // Unix seconds
+    const hours48Ago = now - (48 * 60 * 60);
+    
+    // Load history from Firebase (576 points for 48h @ 5min intervals)
+    const historyRef = ref(database, 'sensors/ESP32-Greenhouse/history');
+    const historyQuery = query(historyRef, orderByChild('timestamp'), limitToLast(576));
+    
+    onValue(historyQuery, (snapshot) => {
+        const historyData = snapshot.val();
+        if (!historyData) {
+            console.log('⚠️ No history data found');
+            return;
+        }
+        
+        console.log('✅ Loaded', Object.keys(historyData).length, 'history points');
+        
+        // Convert to array and filter last 48h
+        const dataPoints = Object.values(historyData)
+            .filter(point => point.timestamp >= hours48Ago)
+            .sort((a, b) => a.timestamp - b.timestamp);
+        
+        console.log('📊 Filtered to', dataPoints.length, 'points in last 48h');
+        
+        // Clear existing chart data
+        if (temperatureChart) {
+            temperatureChart.data.labels = [];
+            temperatureChart.data.datasets[0].data = [];
+        }
+        if (pressureChart) {
+            pressureChart.data.labels = [];
+            pressureChart.data.datasets[0].data = [];
+        }
+        
+        // Add all history points to charts
+        dataPoints.forEach(point => {
+            const date = new Date(point.timestamp * 1000);
+            const timeLabel = date.toLocaleString('el-GR', {
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            if (temperatureChart && point.temperature !== undefined) {
+                temperatureChart.data.labels.push(timeLabel);
+                temperatureChart.data.datasets[0].data.push(point.temperature);
+            }
+            if (pressureChart && point.pressure !== undefined) {
+                pressureChart.data.labels.push(timeLabel);
+                pressureChart.data.datasets[0].data.push(point.pressure);
+            }
+        });
+        
+        // Update charts
+        if (temperatureChart) temperatureChart.update('none');
+        if (pressureChart) pressureChart.update('none');
+        
+        console.log('✅ Charts loaded with 48h history');
+    }, { onlyOnce: true });
+}
+
 function startFirebaseListeners() {
     console.log('🔥 Starting Firebase listeners...');
     
-    // Listen to the entire ESP32-Greenhouse node
+    // First, load historical data
+    loadHistoryData();
+    
+    // Then listen for real-time updates
     const sensorsRef = ref(database, 'sensors/ESP32-Greenhouse');
     onValue(sensorsRef, (snapshot) => {
         // Skip if an update is already in progress
@@ -138,7 +213,21 @@ function startFirebaseListeners() {
 // ============================================
 
 function updateUI(data) {
-    console.log('🔄 [v20251217172200] Updating UI with:', data);
+    console.log('🔄 [v20251217180000] Updating UI with:', data);
+    
+    // Update last update timestamp
+    lastUpdateTime = new Date();
+    const lastUpdateElement = document.getElementById('pageLoadTime');
+    if (lastUpdateElement) {
+        lastUpdateElement.textContent = lastUpdateTime.toLocaleString('el-GR', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        });
+    }
     
     // FORCE UPDATE - Set values directly
     const tempElement = document.getElementById('temperature');
@@ -198,7 +287,7 @@ function updateUI(data) {
         console.error('❌ CRITICAL: light element NOT FOUND');
     }
     
-    console.log('✅ [v20251217172200] UI UPDATE COMPLETE');
+    console.log('✅ [v20251217180000] UI UPDATE COMPLETE - Live with 48h history');
 }
 
 // ============================================
@@ -242,34 +331,47 @@ function updateCharts(data) {
         return;
     }
     
-    const now = new Date().toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    // Format time from Unix timestamp
+    const date = new Date(data.timestamp * 1000);
+    const timeLabel = date.toLocaleString('el-GR', {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
 
-    // Update Temperature Chart (no animation to prevent flickering)
+    // Calculate 48h ago cutoff
+    const now = Date.now() / 1000;
+    const hours48Ago = now - (48 * 60 * 60);
+
+    // Update Temperature Chart - add new point and filter old ones
     if (temperatureChart && data.temperature !== undefined) {
-        temperatureChart.data.labels.push(now);
+        temperatureChart.data.labels.push(timeLabel);
         temperatureChart.data.datasets[0].data.push(data.temperature);
         
-        // Keep last 50 points
-        if (temperatureChart.data.labels.length > 50) {
+        // Remove data older than 48h (keep max 576 points for 48h @ 5min intervals)
+        while (temperatureChart.data.labels.length > 576) {
             temperatureChart.data.labels.shift();
             temperatureChart.data.datasets[0].data.shift();
         }
-        temperatureChart.update('none'); // 'none' = no animation
-        console.log('✅ Temperature chart updated');
+        
+        temperatureChart.update('none'); // No animation to prevent flickering
+        console.log('✅ Temperature chart updated (', temperatureChart.data.labels.length, 'points)');
     }
 
-    // Update Pressure Chart (no animation)
+    // Update Pressure Chart - add new point and filter old ones
     if (pressureChart && data.pressure !== undefined) {
-        pressureChart.data.labels.push(now);
+        pressureChart.data.labels.push(timeLabel);
         pressureChart.data.datasets[0].data.push(data.pressure);
         
-        // Keep last 50 points
-        if (pressureChart.data.labels.length > 50) {
+        // Remove data older than 48h (keep max 576 points)
+        while (pressureChart.data.labels.length > 576) {
             pressureChart.data.labels.shift();
             pressureChart.data.datasets[0].data.shift();
         }
-        pressureChart.update('none'); // 'none' = no animation
-        console.log('✅ Pressure chart updated');
+        
+        pressureChart.update('none'); // No animation
+        console.log('✅ Pressure chart updated (', pressureChart.data.labels.length, 'points)');
     }
 }
 

@@ -337,6 +337,15 @@
             totalReadings: 0
         };
         
+        // Load total readings from Firebase
+        const historyCountRef = ref(database, `sensors/${DEVICE_ID}/history`);
+        onValue(historyCountRef, (snapshot) => {
+            if (snapshot.exists()) {
+                stats.totalReadings = snapshot.size;
+                document.getElementById('totalReadings').textContent = stats.totalReadings;
+            }
+        }, { onlyOnce: true });
+        
         // Initialize Charts
         let tempChart, pressureChart, soilChart, lightChart;
         
@@ -445,8 +454,7 @@
                 }
             }
             
-            stats.totalReadings++;
-            document.getElementById('totalReadings').textContent = stats.totalReadings;
+            // totalReadings updated from history count listener
             
             // Update connection status
             const statusEl = document.getElementById('connectionStatus');
@@ -506,15 +514,12 @@
         });
         
         // Load historical data for charts (48 hours)
-        const historyRef = query(ref(database, `sensors/${DEVICE_ID}/history`), orderByKey(), limitToLast(600));
+        const historyRef = query(ref(database, `sensors/${DEVICE_ID}/history`), orderByChild('timestamp'), limitToLast(600));
         onValue(historyRef, (snapshot) => {
             const historyData = snapshot.val();
             if (historyData) {
-                const entries = Object.entries(historyData)
-                    .map(([key, value]) => ({
-                        timestamp: parseInt(key),
-                        ...value
-                    }))
+                const entries = Object.values(historyData)
+                    .filter(value => value && value.timestamp)
                     .sort((a, b) => a.timestamp - b.timestamp);
                 
                 updateCharts(entries);

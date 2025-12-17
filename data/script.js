@@ -14,6 +14,7 @@ let currentTheme = 'light';
 let isPlaying = true;
 let refreshRate = 2000;
 let weatherEffect = 'none';
+let DEBUG_MODE = true; // Set to false to disable debug logs
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
@@ -29,6 +30,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Load historical data from ESP32 server
 async function loadHistoricalData() {
     try {
+        if (DEBUG_MODE) console.log('🔄 Loading historical data from ESP32...');
         const response = await fetch('/history');
         
         if (!response.ok) {
@@ -37,6 +39,10 @@ async function loadHistoricalData() {
         }
         
         const historyData = await response.json();
+        if (DEBUG_MODE) {
+            console.log('📦 Raw history data received:', historyData);
+            console.log(`📊 Data arrays - Temp: ${historyData.temperature?.length}, Timestamps: ${historyData.timestamps?.length}`);
+        }
         
         if (historyData.temperature && historyData.temperature.length > 0) {
             // Clear existing data
@@ -52,15 +58,23 @@ async function loadHistoricalData() {
                 dataHistory.pressure.push(historyData.pressure[i]);
                 dataHistory.soilMoisture.push(historyData.soil[i] || 0);
                 dataHistory.light.push(historyData.light[i] || 0);
-                // Convert ESP32 millis() to readable time
-                const timestamp = new Date(Date.now() - (historyData.timestamps.length - 1 - i) * 300000);
+                
+                // Convert Unix timestamp (seconds) to JavaScript Date
+                // Timestamps come from ESP32 as Unix timestamps in seconds
+                const unixTimestamp = historyData.timestamps[i];
+                const timestamp = new Date(unixTimestamp * 1000); // Convert seconds to milliseconds
                 dataHistory.timestamps.push(timestamp.toISOString());
+                
+                if (DEBUG_MODE && i < 3) {
+                    console.log(`📅 Sample #${i}: Unix=${unixTimestamp}, Date=${timestamp.toLocaleString()}`);
+                }
             }
             
             // Update charts with historical data
             updateChartsWithHistory();
             
-            console.log(`Loaded ${historyData.temperature.length} historical data points`);
+            console.log(`✅ Loaded ${historyData.temperature.length} historical data points`);
+            console.log(`📅 Time range: ${new Date(historyData.timestamps[0] * 1000).toLocaleString()} to ${new Date(historyData.timestamps[historyData.timestamps.length-1] * 1000).toLocaleString()}`);
             showNotification(`Φορτώθηκαν ${historyData.temperature.length} ιστορικά δεδομένα!`, 'success');
         }
         
@@ -73,30 +87,47 @@ async function loadHistoricalData() {
 function updateChartsWithHistory() {
     if (dataHistory.timestamps.length === 0) return;
     
-    // Create time labels for charts
-    const labels = dataHistory.timestamps.map(timestamp => 
-        new Date(timestamp).toLocaleTimeString()
-    );
+    // Create time labels for charts with smart formatting
+    const labels = dataHistory.timestamps.map(timestamp => {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffHours = Math.abs(now - date) / 36e5; // Hours difference
+        
+        // If data is from today, show time only
+        if (date.toDateString() === now.toDateString()) {
+            return date.toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' });
+        }
+        // If older data, show date and time
+        else if (diffHours < 48) {
+            return date.toLocaleDateString('el-GR', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+        // For very old data, show date only
+        else {
+            return date.toLocaleDateString('el-GR', { month: 'short', day: 'numeric' });
+        }
+    });
     
     // Update temperature chart
     temperatureChart.data.labels = labels;
     temperatureChart.data.datasets[0].data = [...dataHistory.temperature];
-    temperatureChart.update();
+    temperatureChart.update('none'); // No animation for smoother update
     
     // Update pressure chart  
     pressureChart.data.labels = labels;
     pressureChart.data.datasets[0].data = [...dataHistory.pressure];
-    pressureChart.update();
+    pressureChart.update('none');
     
     // Update soil moisture chart
     soilMoistureChart.data.labels = labels;
     soilMoistureChart.data.datasets[0].data = [...dataHistory.soilMoisture];
-    soilMoistureChart.update();
+    soilMoistureChart.update('none');
     
     // Update light chart
     lightChart.data.labels = labels;
     lightChart.data.datasets[0].data = [...dataHistory.light];
-    lightChart.update();
+    lightChart.update('none');
+    
+    console.log(`📊 Charts updated with ${labels.length} data points`);
 }
 
 // Initialize Chart.js charts
@@ -116,20 +147,57 @@ function initializeCharts() {
                 borderColor: '#28a745',
                 backgroundColor: 'rgba(40, 167, 69, 0.1)',
                 fill: true,
-                tension: 0.4
+                tension: 0.4,
+                pointRadius: 3,
+                pointHoverRadius: 5
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: true,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
             scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Χρόνος'
+                    },
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 0,
+                        autoSkip: true,
+                        maxTicksLimit: 8
+                    }
+                },
                 y: {
-                    beginAtZero: false
+                    beginAtZero: false,
+                    title: {
+                        display: true,
+                        text: '°C'
+                    }
                 }
             },
             plugins: {
                 legend: {
                     display: true,
                     position: 'top'
+                },
+                tooltip: {
+                    enabled: true,
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        title: function(context) {
+                            return 'Ώρα: ' + context[0].label;
+                        },
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y.toFixed(1) + '°C';
+                        }
+                    }
                 }
             }
         }
@@ -145,20 +213,52 @@ function initializeCharts() {
                 borderColor: '#17a2b8',
                 backgroundColor: 'rgba(23, 162, 184, 0.1)',
                 fill: true,
-                tension: 0.4
+                tension: 0.4,
+                pointRadius: 3,
+                pointHoverRadius: 5
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: true,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
             scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Χρόνος'
+                    },
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 0,
+                        autoSkip: true,
+                        maxTicksLimit: 8
+                    }
+                },
                 y: {
-                    beginAtZero: false
+                    beginAtZero: false,
+                    title: {
+                        display: true,
+                        text: 'hPa'
+                    }
                 }
             },
             plugins: {
                 legend: {
                     display: true,
                     position: 'top'
+                },
+                tooltip: {
+                    enabled: true,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y.toFixed(1) + ' hPa';
+                        }
+                    }
                 }
             }
         }
@@ -174,21 +274,53 @@ function initializeCharts() {
                 borderColor: '#007bff',
                 backgroundColor: 'rgba(0, 123, 255, 0.1)',
                 fill: true,
-                tension: 0.4
+                tension: 0.4,
+                pointRadius: 3,
+                pointHoverRadius: 5
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: true,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
             scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Χρόνος'
+                    },
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 0,
+                        autoSkip: true,
+                        maxTicksLimit: 8
+                    }
+                },
                 y: {
                     beginAtZero: true,
-                    max: 100
+                    max: 100,
+                    title: {
+                        display: true,
+                        text: '%'
+                    }
                 }
             },
             plugins: {
                 legend: {
                     display: true,
                     position: 'top'
+                },
+                tooltip: {
+                    enabled: true,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y.toFixed(0) + '%';
+                        }
+                    }
                 }
             }
         }
@@ -204,20 +336,52 @@ function initializeCharts() {
                 borderColor: '#ffc107',
                 backgroundColor: 'rgba(255, 193, 7, 0.1)',
                 fill: true,
-                tension: 0.4
+                tension: 0.4,
+                pointRadius: 3,
+                pointHoverRadius: 5
             }]
         },
         options: {
             responsive: true,
+            maintainAspectRatio: true,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
             scales: {
+                x: {
+                    display: true,
+                    title: {
+                        display: true,
+                        text: 'Χρόνος'
+                    },
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 0,
+                        autoSkip: true,
+                        maxTicksLimit: 8
+                    }
+                },
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'lux'
+                    }
                 }
             },
             plugins: {
                 legend: {
                     display: true,
                     position: 'top'
+                },
+                tooltip: {
+                    enabled: true,
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.parsed.y.toFixed(0) + ' lux';
+                        }
+                    }
                 }
             }
         }
@@ -248,16 +412,35 @@ async function updateData() {
         updateStatusIndicator('lightStatus', data.light, 200, 2000);
         
         // Add current data point to charts (real-time update)
-        const now = new Date().toLocaleTimeString();
-        updateChart(temperatureChart, data.temperature, now);
-        updateChart(pressureChart, data.pressure, now);
-        updateChart(soilMoistureChart, data.soilMoisture, now);
-        updateChart(lightChart, data.light, now);
+        const now = new Date();
+        const timeLabel = now.toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' });
+        
+        updateChart(temperatureChart, data.temperature, timeLabel);
+        updateChart(pressureChart, data.pressure, timeLabel);
+        updateChart(soilMoistureChart, data.soilMoisture, timeLabel);
+        updateChart(lightChart, data.light, timeLabel);
+        
+        // Add to local history for persistence
+        dataHistory.temperature.push(data.temperature);
+        dataHistory.pressure.push(data.pressure);
+        dataHistory.soilMoisture.push(data.soilMoisture);
+        dataHistory.light.push(data.light);
+        dataHistory.timestamps.push(now.toISOString());
+        
+        // Keep only last 100 points in browser memory (rest comes from server history)
+        if (dataHistory.temperature.length > 100) {
+            dataHistory.temperature.shift();
+            dataHistory.pressure.shift();
+            dataHistory.soilMoisture.shift();
+            dataHistory.light.shift();
+            dataHistory.timestamps.shift();
+        }
         
         // Note: Historical data is now managed by ESP32 server, not browser
         // Data persistence survives page refreshes thanks to server-side storage
         
-        showNotification('Δεδομένα ενημερώθηκαν επιτυχώς!', 'success');
+        // Don't show notification on every update (too noisy)
+        // showNotification('Δεδομένα ενημερώθηκαν επιτυχώς!', 'success');
         
     } catch (error) {
         console.error('Update failed:', error);
@@ -316,15 +499,19 @@ function updateStatusCard(type, value, unit, icon, minGood, maxGood) {
 
 // Update chart with new data
 function updateChart(chart, value, label) {
+    // Add new data point
     chart.data.labels.push(label);
     chart.data.datasets[0].data.push(value);
     
-    // Keep only last 20 data points
-    if (chart.data.labels.length > 20) {
+    // Keep only last 50 data points in real-time view (about 4 minutes at 5s interval)
+    // Historical data (24h) is loaded separately from server
+    const maxPoints = 50;
+    if (chart.data.labels.length > maxPoints) {
         chart.data.labels.shift();
         chart.data.datasets[0].data.shift();
     }
     
+    // Update without animation for smoother experience
     chart.update('none');
 }
 
@@ -562,9 +749,38 @@ function formatUptime(seconds) {
     return `${days}d ${hours}h ${minutes}m`;
 }
 
+// Unified startAutoUpdate with history reload every 5 minutes
+let updateInterval = null;
+let historyReloadInterval = null;
+
 function startAutoUpdate() {
+    // Stop any existing intervals
     if (updateInterval) clearInterval(updateInterval);
-    updateInterval = setInterval(updateData, refreshRate);
+    if (historyReloadInterval) clearInterval(historyReloadInterval);
+    
+    // Update data every 5 seconds (real-time updates)
+    updateInterval = setInterval(updateData, 5000);
+    
+    // Reload historical data every 5 minutes to sync with ESP32
+    historyReloadInterval = setInterval(() => {
+        if (DEBUG_MODE) console.log('🔄 Auto-reloading historical data...');
+        loadHistoricalData();
+    }, 300000); // 5 minutes = 300000ms
+    
+    if (DEBUG_MODE) console.log('✅ Auto-update started: Data refresh=5s, History reload=5min');
+}
+
+// Stop automatic updates
+function stopAutoUpdate() {
+    if (updateInterval) {
+        clearInterval(updateInterval);
+        updateInterval = null;
+    }
+    if (historyReloadInterval) {
+        clearInterval(historyReloadInterval);
+        historyReloadInterval = null;
+    }
+    if (DEBUG_MODE) console.log('⏸️ Auto-update stopped');
 }
 
 function saveSettings() {
@@ -604,23 +820,6 @@ function formatUptime(seconds) {
     }
 }
 
-// Start automatic updates every 5 seconds
-function startAutoUpdate() {
-    if (updateInterval) {
-        clearInterval(updateInterval);
-    }
-    
-    updateInterval = setInterval(updateData, 5000);
-}
-
-// Stop automatic updates
-function stopAutoUpdate() {
-    if (updateInterval) {
-        clearInterval(updateInterval);
-        updateInterval = null;
-    }
-}
-
 // Handle page visibility changes to save resources
 document.addEventListener('visibilitychange', function() {
     if (document.hidden) {
@@ -628,6 +827,7 @@ document.addEventListener('visibilitychange', function() {
     } else {
         startAutoUpdate();
         updateData(); // Immediate update when page becomes visible
+        loadHistoricalData(); // Also reload history when page becomes visible
     }
 });
 

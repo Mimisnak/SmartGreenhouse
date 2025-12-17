@@ -1,0 +1,29 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    
+    "sensors": {
+      "$deviceId": {
+        ".read": true,
+        ".write": "auth != null || $deviceId == 'ESP32-Greenhouse'",
+        
+        "latest": {
+          ".validate": "newData.hasChildren(['timestamp', 'temperature', 'pressure'])"
+        },
+        
+        "history": {
+          "$timestamp": {
+            ".validate": "newData.hasChildren(['timestamp', 'temperature', 'pressure'])"
+          }
+        },
+        
+        "stats": {
+          "totalReadings": {
+            ".validate": "newData.isNumber()"
+          }
+        }
+      }
+    }
+  }
+}

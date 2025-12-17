@@ -9,6 +9,12 @@
 #include <Wire.h>
 #include <HTTPClient.h>
 #include <FirebaseESP32.h>
+#include <FastLED.h>
+
+// RGB LED Configuration (WS2812 addressable LED on ESP32-S3)
+#define LED_PIN 48
+#define NUM_LEDS 1
+CRGB leds[NUM_LEDS];
 
 // --- Sensor Registry Structure ---
 enum SensorType {
@@ -50,7 +56,7 @@ FirebaseAuth firebaseAuth;
 const char* cloudApiUrl = "";  // Not used - using Firebase directly
 const char* deviceId = DEVICE_ID;
 unsigned long lastCloudSync = 0;
-#define CLOUD_SYNC_INTERVAL 300000  // Send data every 5 minutes (48h history)
+#define CLOUD_SYNC_INTERVAL 30000  // Send data every 30 seconds (for testing, then change to 300000 for 5 min)
 
 // --- Soil Moisture Configuration ---
 // Adjust SOIL_PIN to your actual analog pin. Choose an ADC1 capable pin.
@@ -60,6 +66,7 @@ unsigned long lastCloudSync = 0;
 #define SOIL_DRY_VALUE 3285  // Capacitive sensor reading in air (dry = 0%)
 #define SOIL_WET_VALUE 27    // Capacitive sensor in wet soil (wet = 100%)
 
+// LED indicator for cloud sync
 const char* ssid = "Vodafone-E79546683";
 const char* password = "RLg2s6b73EfarXRx";
 
@@ -94,7 +101,8 @@ void updateSensorRegistry();
 void sendToCloud();
 
 // History storage - 48 hours of data (one reading every 5 minutes = 576 points)
-#define MAX_HISTORY_POINTS 576
+#define MAX_HISTORY_POINTS 288  // 24 hours at 5-minute intervals (24*60/5=288)
+#define MAX_FIREBASE_HISTORY 288  // Keep last 24 hours in Firebase
 struct SensorReading {
   float temperature;
   float pressure;
@@ -106,6 +114,9 @@ struct SensorReading {
 SensorReading sensorHistory[MAX_HISTORY_POINTS];
 int historyIndex = 0;
 int historyCount = 0;
+int totalReadingsCount = 0;  // Total readings sent to Firebase
+float minTemperature = 999.0;  // Track min temp in 24h window
+float maxTemperature = -999.0; // Track max temp in 24h window
 unsigned long lastHistoryUpdate = 0;
 #define HISTORY_INTERVAL 300000  // 5 minutes in milliseconds
 
@@ -203,6 +214,13 @@ void setup() {
   }
   // Initial soil moisture read (will stay -1 if pin not connected / invalid)
   soilMoisture = readSoilMoisturePercent();
+  
+  // Initialize RGB LED (WS2812)
+  FastLED.addLeds<WS2812, LED_PIN, RGB>(leds, NUM_LEDS);  // Changed to RGB color order
+  FastLED.setBrightness(50);  // 50/255 brightness
+  leds[0] = CRGB::Black;  // Off initially
+  FastLED.show();
+  
   WiFi.begin(ssid, password);
   Serial.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
@@ -394,22 +412,34 @@ void setupWebServer() {
   res->print(F("</div><div class='card-unit'>%</div><div class='card-status "));
   res->print(soilAvail?F("ok' id='soilStatus' data-el='ΕΝΕΡΓΟΣ' data-en='ACTIVE'>ΕΝΕΡΓΟΣ</div></div>"):F("na' id='soilStatus' data-el='ΜΗ ΔΙΑΘΕΣΙΜΟΣ' data-en='UNAVAILABLE'>ΜΗ ΔΙΑΘΕΣΙΜΟΣ</div></div>"));
   res->print(F("</div>")); // status-cards
+  // System Information Section
+  res->print(F("<div class='charts-section' style='margin-top:15px;'><h3 style='color:#2E7D32;margin-bottom:10px;'><span data-el='Πληροφορίες Συστήματος' data-en='System Information'>Πληροφορίες Συστήματος</span></h3><div class='charts-grid' style='grid-template-columns:repeat(auto-fit,minmax(200px,1fr));'><div style='background:white;border-radius:10px;padding:15px;border-left:3px solid #4CAF50;'><div style='color:#2E7D32;font-size:0.85em;margin-bottom:5px;' data-el='Τελευταία Ενημέρωση' data-en='Last Update'>Τελευταία Ενημέρωση</div><div id='systemLastUpdate' style='font-size:1.3em;font-weight:700;color:#2E7D32;'>--</div></div><div style='background:white;border-radius:10px;padding:15px;border-left:3px solid #4CAF50;'><div style='color:#2E7D32;font-size:0.85em;margin-bottom:5px;' data-el='Σύνολο Καταγραφών' data-en='Total Readings'>Σύνολο Καταγραφών</div><div id='totalReadings' style='font-size:1.3em;font-weight:700;color:#2E7D32;'>0</div></div><div style='background:white;border-radius:10px;padding:15px;border-left:3px solid #4CAF50;'><div style='color:#2E7D32;font-size:0.85em;margin-bottom:5px;' data-el='Ελάχιστη Θερμοκρασία' data-en='Min Temperature'>Ελάχιστη Θερμοκρασία</div><div id='minTemp' style='font-size:1.3em;font-weight:700;color:#2E7D32;'>--</div></div><div style='background:white;border-radius:10px;padding:15px;border-left:3px solid #4CAF50;'><div style='color:#2E7D32;font-size:0.85em;margin-bottom:5px;' data-el='Μέγιστη Θερμοκρασία' data-en='Max Temperature'>Μέγιστη Θερμοκρασία</div><div id='maxTemp' style='font-size:1.3em;font-weight:700;color:#2E7D32;'>--</div></div></div></div>"));
   // Charts
-  res->print(F("<div class='charts-section'><div class='charts-grid'>"));
-  res->print(F("<div class='chart-container'><h3 class='chart-title' data-el='Ιστορικό Θερμοκρασίας (48 ώρες)' data-en='Temperature History (48h)'>Ιστορικό Θερμοκρασίας (48 ώρες)</h3><div class='chart-wrapper'><canvas id='tempChart'></canvas></div></div>"));
-  res->print(F("<div class='chart-container'><h3 class='chart-title' data-el='Ιστορικό Πίεσης (48 ώρες)' data-en='Pressure History (48h)'>Ιστορικό Πίεσης (48 ώρες)</h3><div class='chart-wrapper'><canvas id='pressChart'></canvas></div></div>"));
-  res->print(F("<div class='chart-container'><h3 class='chart-title' data-el='Ιστορικό Φωτισμού (48 ώρες)' data-en='Light History (48h)'>Ιστορικό Φωτισμού (48 ώρες)</h3><div class='chart-wrapper'><canvas id='lightChart'></canvas></div></div>"));
-  res->print(F("<div class='chart-container'><h3 class='chart-title' data-el='Ιστορικό Υγρασίας Εδάφους (48 ώρες)' data-en='Soil Moisture History (48h)'>Ιστορικό Υγρασίας Εδάφους (48 ώρες)</h3><div class='chart-wrapper'><canvas id='soilChart'></canvas></div></div>"));
+  res->print(F("<div class='charts-section'><h3 style='color:#2E7D32;margin-bottom:10px;'><span data-el='Ανάλυση Ιστορικών Δεδομένων (24ωρο)' data-en='Historical Data Analysis (24h)'>Ανάλυση Ιστορικών Δεδομένων (24ωρο)</span></h3><div class='charts-grid'>"));
+  res->print(F("<div class='chart-container'><h3 class='chart-title' data-el='Ιστορικό Θερμοκρασίας (24 ώρες)' data-en='Temperature History (24h)'>Ιστορικό Θερμοκρασίας (24 ώρες)</h3><div class='chart-wrapper'><canvas id='tempChart'></canvas></div></div>"));
+  res->print(F("<div class='chart-container'><h3 class='chart-title' data-el='Ιστορικό Πίεσης (24 ώρες)' data-en='Pressure History (24h)'>Ιστορικό Πίεσης (24 ώρες)</h3><div class='chart-wrapper'><canvas id='pressChart'></canvas></div></div>"));
+  res->print(F("<div class='chart-container'><h3 class='chart-title' data-el='Ιστορικό Φωτισμού (24 ώρες)' data-en='Light History (24h)'>Ιστορικό Φωτισμού (24 ώρες)</h3><div class='chart-wrapper'><canvas id='lightChart'></canvas></div></div>"));
+  res->print(F("<div class='chart-container'><h3 class='chart-title' data-el='Ιστορικό Υγρασίας Εδάφους (24 ώρες)' data-en='Soil Moisture History (24h)'>Ιστορικό Υγρασίας Εδάφους (24 ώρες)</h3><div class='chart-wrapper'><canvas id='soilChart'></canvas></div></div>"));
   res->print(F("</div></div>"));
   res->print(F("<div class='footer'><p>&copy; 2025 <a href='https://github.com/Mimisnak/SmartGreenhouse' target='_blank'>Smart Greenhouse System</a> | <span data-el='Developer by:' data-en='Developer by:'>Developer by:</span> <a href='https://mimis.dev' target='_blank'>mimis.dev</a></p><div class='update-time' id='lastUpdate' data-el='Τελευταία ενημέρωση: αρχική' data-en='Last update: initial'>Τελευταία ενημέρωση: αρχική</div></div></div>"));
   // JS with improved sensor disconnection detection and stable colors
-  res->print(F("<script src='https://cdn.jsdelivr.net/npm/chart.js'></script><script>var tempChart=null,pressChart=null,lightChart=null,soilChart=null;var dataHistory={temperature:[],pressure:[],light:[],soil:[],timestamps:[],realTimestamps:[]};var currentLanguage='el',lastUpdateTime=null;const WINDOW_MS=48*60*60*1000;function trimOld(){var now=Date.now();while(dataHistory.realTimestamps.length && now-dataHistory.realTimestamps[0].getTime()>WINDOW_MS){dataHistory.realTimestamps.shift();dataHistory.timestamps.shift();dataHistory.temperature.shift();dataHistory.pressure.shift();dataHistory.light.shift();dataHistory.soil.shift();}}function loadServerHistory(){return fetch('/history').then(r=>r.json()).then(d=>{if(d.temperature && d.temperature.length>0){for(var i=0;i<d.temperature.length;i++){var t=new Date(d.timestamps[i]);dataHistory.realTimestamps.push(t);dataHistory.timestamps.push(t.toLocaleTimeString());dataHistory.temperature.push(d.temperature[i]);dataHistory.pressure.push(d.pressure[i]);dataHistory.light.push(d.light[i]);dataHistory.soil.push(d.soil[i]);lastUpdateTime=t;}}}).catch(e=>{console.log('No server history available')});}function loadStoredData(){var s=localStorage.getItem('greenhouse-data-v2');if(!s)return;try{var arr=JSON.parse(s);var now=Date.now();arr.forEach(it=>{var t=new Date(it.timestamp);if(now-t.getTime()<=WINDOW_MS){var existing=dataHistory.realTimestamps.find(rt=>Math.abs(rt.getTime()-t.getTime())<60000);if(!existing){dataHistory.realTimestamps.push(t);dataHistory.timestamps.push(t.toLocaleTimeString());dataHistory.temperature.push(it.temperature);dataHistory.pressure.push(it.pressure);dataHistory.light.push(it.light);dataHistory.soil.push(it.soil);lastUpdateTime=t;}}});}catch(e){}}function saveData(){try{var out=[];for(var i=0;i<dataHistory.realTimestamps.length;i++){out.push({timestamp:dataHistory.realTimestamps[i].toISOString(),temperature:dataHistory.temperature[i],pressure:dataHistory.pressure[i],light:dataHistory.light[i],soil:dataHistory.soil[i]});}localStorage.setItem('greenhouse-data-v2',JSON.stringify(out));}catch(e){}}function makeChart(ctx,label,color,data){return new Chart(ctx,{type:'line',data:{labels:dataHistory.timestamps,datasets:[{label:label,data:data,borderColor:color,backgroundColor:color.replace('rgb','rgba').replace(')',',0.15)'),tension:.35,fill:true,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},animation:{duration:0},scales:{x:{ticks:{maxRotation:0,minRotation:0}}}}});}function initCharts(){tempChart=makeChart(document.getElementById('tempChart').getContext('2d'),'Temperature (°C)','rgb(76,175,80)',dataHistory.temperature);pressChart=makeChart(document.getElementById('pressChart').getContext('2d'),'Pressure (hPa)','rgb(46,125,50)',dataHistory.pressure);lightChart=makeChart(document.getElementById('lightChart').getContext('2d'),'Light (lux)','rgb(139,195,74)',dataHistory.light);soilChart=makeChart(document.getElementById('soilChart').getContext('2d'),'Soil (%)','rgb(102,187,106)',dataHistory.soil);}function refreshCharts(){[tempChart,pressChart,lightChart,soilChart].forEach((c,i)=>{if(!c)return;c.data.labels=dataHistory.timestamps.slice();var arr=i===0?dataHistory.temperature:i===1?dataHistory.pressure:i===2?dataHistory.light:dataHistory.soil;c.data.datasets[0].data=arr.slice();c.update('none');});}function updateData(){fetch('/api').then(r=>r.json()).then(d=>{if(d.temperature>-900 && d.temperature<100){document.getElementById('temperature').textContent=d.temperature.toFixed(1);document.getElementById('tempStatus').className='card-status ok';document.getElementById('tempStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';}else{document.getElementById('temperature').textContent='--';document.getElementById('tempStatus').className='card-status na';document.getElementById('tempStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}if(d.pressure>-900 && d.pressure<2000){document.getElementById('pressure').textContent=d.pressure.toFixed(1);document.getElementById('pressStatus').className='card-status ok';document.getElementById('pressStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';}else{document.getElementById('pressure').textContent='--';document.getElementById('pressStatus').className='card-status na';document.getElementById('pressStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}if(d.light>=0){document.getElementById('light').textContent=d.light.toFixed(0);document.getElementById('lightStatus').className='card-status ok';document.getElementById('lightStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';}else{document.getElementById('light').textContent='--';document.getElementById('lightStatus').className='card-status na';document.getElementById('lightStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}if(d.soil>=0){document.getElementById('soil').textContent=d.soil.toFixed(0);document.getElementById('soilStatus').className='card-status ok';document.getElementById('soilStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';}else{document.getElementById('soil').textContent='--';document.getElementById('soilStatus').className='card-status na';document.getElementById('soilStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}var now=new Date();var existing=dataHistory.realTimestamps.find(rt=>Math.abs(rt.getTime()-now.getTime())<60000);if(!existing){dataHistory.temperature.push(d.temperature>-900?d.temperature:null);dataHistory.pressure.push(d.pressure>-900?d.pressure:null);dataHistory.light.push(d.light>=0?d.light:null);dataHistory.soil.push(d.soil>=0?d.soil:null);dataHistory.realTimestamps.push(now);dataHistory.timestamps.push(now.toLocaleTimeString());trimOld();refreshCharts();saveData();}lastUpdateTime=now;document.getElementById('lastUpdate').textContent=(currentLanguage==='el'?'Τελευταία ενημέρωση: ':'Last update: ')+now.toLocaleString(currentLanguage==='el'?'el-GR':'en-US');}).catch(e=>{});}function setLanguage(lang){currentLanguage=lang;document.querySelectorAll('.language-btn').forEach(b=>b.classList.remove('active'));document.getElementById('btn-'+lang).classList.add('active');document.querySelectorAll('[data-'+lang+']').forEach(el=>{el.textContent=el.getAttribute('data-'+lang)});if(lastUpdateTime){document.getElementById('lastUpdate').textContent=(currentLanguage==='el'?'Τελευταία ενημέρωση: ':'Last update: ')+lastUpdateTime.toLocaleString(currentLanguage==='el'?'el-GR':'en-US')}localStorage.setItem('preferred-language',lang);}window.onload=function(){document.body.style.animation='none';document.body.style.background='linear-gradient(135deg,#8BC34A 0%,#689F38 50%,#558B2F 100%)';var savedLang=localStorage.getItem('preferred-language')||'el';setLanguage(savedLang);loadServerHistory().then(()=>{loadStoredData();dataHistory.realTimestamps.sort((a,b)=>a.getTime()-b.getTime());dataHistory.timestamps=dataHistory.realTimestamps.map(t=>t.toLocaleTimeString());initCharts();refreshCharts();updateData();setInterval(updateData,5000);});}</script></body></html>"));
+  res->print(F("<script src='https://cdn.jsdelivr.net/npm/chart.js'></script><script>var tempChart=null,pressChart=null,lightChart=null,soilChart=null;var dataHistory={temperature:[],pressure:[],light:[],soil:[],timestamps:[],realTimestamps:[]};var currentLanguage='el',lastUpdateTime=null;const WINDOW_MS=24*60*60*1000;function trimOld(){var now=Date.now();while(dataHistory.realTimestamps.length && now-dataHistory.realTimestamps[0].getTime()>WINDOW_MS){dataHistory.realTimestamps.shift();dataHistory.timestamps.shift();dataHistory.temperature.shift();dataHistory.pressure.shift();dataHistory.light.shift();dataHistory.soil.shift();}}function loadServerHistory(){return fetch('/history').then(r=>r.json()).then(d=>{if(d.temperature && d.temperature.length>0){for(var i=0;i<d.temperature.length;i++){var t=new Date(d.timestamps[i]);dataHistory.realTimestamps.push(t);dataHistory.timestamps.push(t.toLocaleTimeString());dataHistory.temperature.push(d.temperature[i]);dataHistory.pressure.push(d.pressure[i]);dataHistory.light.push(d.light[i]);dataHistory.soil.push(d.soil[i]);lastUpdateTime=t;}}}).catch(e=>{console.log('No server history available')});}function loadStoredData(){var s=localStorage.getItem('greenhouse-data-v2');if(!s)return;try{var arr=JSON.parse(s);var now=Date.now();arr.forEach(it=>{var t=new Date(it.timestamp);if(now-t.getTime()<=WINDOW_MS){var existing=dataHistory.realTimestamps.find(rt=>Math.abs(rt.getTime()-t.getTime())<60000);if(!existing){dataHistory.realTimestamps.push(t);dataHistory.timestamps.push(t.toLocaleTimeString());dataHistory.temperature.push(it.temperature);dataHistory.pressure.push(it.pressure);dataHistory.light.push(it.light);dataHistory.soil.push(it.soil);lastUpdateTime=t;}}});}catch(e){}}function saveData(){try{var out=[];for(var i=0;i<dataHistory.realTimestamps.length;i++){out.push({timestamp:dataHistory.realTimestamps[i].toISOString(),temperature:dataHistory.temperature[i],pressure:dataHistory.pressure[i],light:dataHistory.light[i],soil:dataHistory.soil[i]});}localStorage.setItem('greenhouse-data-v2',JSON.stringify(out));}catch(e){}}function makeChart(ctx,label,color,data){return new Chart(ctx,{type:'line',data:{labels:dataHistory.timestamps,datasets:[{label:label,data:data,borderColor:color,backgroundColor:color.replace('rgb','rgba').replace(')',',0.15)'),tension:.35,fill:true,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},animation:{duration:0},scales:{x:{ticks:{maxRotation:0,minRotation:0}}}}});}function initCharts(){tempChart=makeChart(document.getElementById('tempChart').getContext('2d'),'Temperature (°C)','rgb(76,175,80)',dataHistory.temperature);pressChart=makeChart(document.getElementById('pressChart').getContext('2d'),'Pressure (hPa)','rgb(46,125,50)',dataHistory.pressure);lightChart=makeChart(document.getElementById('lightChart').getContext('2d'),'Light (lux)','rgb(139,195,74)',dataHistory.light);soilChart=makeChart(document.getElementById('soilChart').getContext('2d'),'Soil (%)','rgb(102,187,106)',dataHistory.soil);}function refreshCharts(){[tempChart,pressChart,lightChart,soilChart].forEach((c,i)=>{if(!c)return;c.data.labels=dataHistory.timestamps.slice();var arr=i===0?dataHistory.temperature:i===1?dataHistory.pressure:i===2?dataHistory.light:dataHistory.soil;c.data.datasets[0].data=arr.slice();c.update('none');});}function updateData(){fetch('/api').then(r=>r.json()).then(d=>{if(d.temperature>-900 && d.temperature<100){document.getElementById('temperature').textContent=d.temperature.toFixed(1);document.getElementById('tempStatus').className='card-status ok';document.getElementById('tempStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';}else{document.getElementById('temperature').textContent='--';document.getElementById('tempStatus').className='card-status na';document.getElementById('tempStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}if(d.pressure>-900 && d.pressure<2000){document.getElementById('pressure').textContent=d.pressure.toFixed(1);document.getElementById('pressStatus').className='card-status ok';document.getElementById('pressStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';}else{document.getElementById('pressure').textContent='--';document.getElementById('pressStatus').className='card-status na';document.getElementById('pressStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}if(d.light>=0){document.getElementById('light').textContent=d.light.toFixed(0);document.getElementById('lightStatus').className='card-status ok';document.getElementById('lightStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';}else{document.getElementById('light').textContent='--';document.getElementById('lightStatus').className='card-status na';document.getElementById('lightStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}if(d.soil>=0){document.getElementById('soil').textContent=d.soil.toFixed(0);document.getElementById('soilStatus').className='card-status ok';document.getElementById('soilStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';}else{document.getElementById('soil').textContent='--';document.getElementById('soilStatus').className='card-status na';document.getElementById('soilStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}if(d.totalReadings){document.getElementById('totalReadings').textContent=d.totalReadings;}if(d.minTemperature && d.minTemperature<999){document.getElementById('minTemp').textContent=d.minTemperature.toFixed(1)+'°C';}if(d.maxTemperature && d.maxTemperature>-999){document.getElementById('maxTemp').textContent=d.maxTemperature.toFixed(1)+'°C';}var now=new Date();document.getElementById('systemLastUpdate').textContent=now.toLocaleTimeString(currentLanguage==='el'?'el-GR':'en-US');var existing=dataHistory.realTimestamps.find(rt=>Math.abs(rt.getTime()-now.getTime())<60000);if(!existing){dataHistory.temperature.push(d.temperature>-900?d.temperature:null);dataHistory.pressure.push(d.pressure>-900?d.pressure:null);dataHistory.light.push(d.light>=0?d.light:null);dataHistory.soil.push(d.soil>=0?d.soil:null);dataHistory.realTimestamps.push(now);dataHistory.timestamps.push(now.toLocaleTimeString());trimOld();refreshCharts();saveData();}lastUpdateTime=now;document.getElementById('lastUpdate').textContent=(currentLanguage==='el'?'Τελευταία ενημέρωση: ':'Last update: ')+now.toLocaleString(currentLanguage==='el'?'el-GR':'en-US');}).catch(e=>{});}function setLanguage(lang){currentLanguage=lang;document.querySelectorAll('.language-btn').forEach(b=>b.classList.remove('active'));document.getElementById('btn-'+lang).classList.add('active');document.querySelectorAll('[data-'+lang+']').forEach(el=>{el.textContent=el.getAttribute('data-'+lang)});if(lastUpdateTime){document.getElementById('lastUpdate').textContent=(currentLanguage==='el'?'Τελευταία ενημέρωση: ':'Last update: ')+lastUpdateTime.toLocaleString(currentLanguage==='el'?'el-GR':'en-US')}localStorage.setItem('preferred-language',lang);}window.onload=function(){document.body.style.animation='none';document.body.style.background='linear-gradient(135deg,#8BC34A 0%,#689F38 50%,#558B2F 100%)';var savedLang=localStorage.getItem('preferred-language')||'el';setLanguage(savedLang);loadServerHistory().then(()=>{loadStoredData();dataHistory.realTimestamps.sort((a,b)=>a.getTime()-b.getTime());dataHistory.timestamps=dataHistory.realTimestamps.map(t=>t.toLocaleTimeString());initCharts();refreshCharts();updateData();setInterval(updateData,5000);});}</script></body></html>"));
   logRequest(request,200);
   request->send(res);
   });
 
   server.on("/api", HTTP_GET, [](AsyncWebServerRequest *request){
-    JsonDocument doc; doc["temperature"]=temperature; doc["pressure"]=pressure; doc["light"]= (lightLevel!=-1)?lightLevel:0; doc["soil"]= (soilMoisture>=0)?soilMoisture:-1; doc["timestamp"]=millis(); String res; serializeJson(doc,res); request->send(200,"application/json",res);
+    JsonDocument doc; 
+    doc["temperature"]=temperature; 
+    doc["pressure"]=pressure; 
+    doc["light"]= (lightLevel!=-1)?lightLevel:0; 
+    doc["soil"]= (soilMoisture>=0)?soilMoisture:-1; 
+    doc["timestamp"]=millis();
+    doc["minTemperature"]=minTemperature;
+    doc["maxTemperature"]=maxTemperature;
+    doc["totalReadings"]=totalReadingsCount;
+    String res; serializeJson(doc,res); 
+    request->send(200,"application/json",res);
     logRequest(request,200);
   });
   server.on("/health", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -586,22 +616,53 @@ void addToHistory() {
   if (currentTime - lastHistoryUpdate >= HISTORY_INTERVAL) {
     lastHistoryUpdate = currentTime;
     
-    // Add current reading to circular buffer
+    // Get current Unix timestamp (seconds since epoch)
+    time_t now;
+    time(&now);
+    unsigned long unixTimestamp = (unsigned long)now;
+    
+    // Add current reading to circular buffer with UNIX TIMESTAMP
     sensorHistory[historyIndex].temperature = temperature;
     sensorHistory[historyIndex].pressure = pressure;
     sensorHistory[historyIndex].lightLevel = lightLevel;
     sensorHistory[historyIndex].soilMoisture = soilMoisture;
-    sensorHistory[historyIndex].timestamp = currentTime;
+    sensorHistory[historyIndex].timestamp = unixTimestamp;  // UNIX timestamp, not millis!
     
     historyIndex = (historyIndex + 1) % MAX_HISTORY_POINTS;
     if (historyCount < MAX_HISTORY_POINTS) {
       historyCount++;
     }
     
-    Serial.print("History added: "); 
+    // Calculate min/max temperature from last 24h of history
+    minTemperature = 999.0;
+    maxTemperature = -999.0;
+    for (int i = 0; i < historyCount; i++) {
+      float t = sensorHistory[i].temperature;
+      if (t > -50 && t < 100) {  // Valid temperature range
+        if (t < minTemperature) minTemperature = t;
+        if (t > maxTemperature) maxTemperature = t;
+      }
+    }
+    
+    // Format timestamp for display
+    struct tm timeinfo;
+    localtime_r(&now, &timeinfo);
+    char timeStr[20];
+    strftime(timeStr, sizeof(timeStr), "%H:%M:%S", &timeinfo);
+    
+    Serial.print("📊 History added: "); 
     Serial.print(historyCount); 
     Serial.print("/"); 
-    Serial.println(MAX_HISTORY_POINTS);
+    Serial.print(MAX_HISTORY_POINTS);
+    Serial.print(" @ ");
+    Serial.print(timeStr);
+    Serial.print(" | Temp: ");
+    Serial.print(temperature);
+    Serial.print("°C (Min: ");
+    Serial.print(minTemperature);
+    Serial.print(", Max: ");
+    Serial.print(maxTemperature);
+    Serial.println(")");
   }
 }
 
@@ -653,23 +714,42 @@ void sendToCloud() {
     return;
   }
   
+  // LED on - indicate sending data (airplane style blink)
+  for (int i = 0; i < 3; i++) {
+    leds[0] = CRGB::Blue;
+    FastLED.show();
+    delay(100);
+    leds[0] = CRGB::White;
+    FastLED.show();
+    delay(100);
+  }
+  
   // Send to Firebase Realtime Database
   String path = String("sensors/") + DEVICE_ID + "/latest";
   
-  // Get current Unix timestamp (milliseconds since 1970)
+  // Get current Unix timestamp and formatted ISO string
   time_t now;
   time(&now);
-  unsigned long long timestamp = (unsigned long long)now * 1000ULL;
+  unsigned long long timestampMs = (unsigned long long)now * 1000ULL;
+  
+  struct tm timeinfo;
+  char timestampStr[30];
+  if (getLocalTime(&timeinfo)) {
+    strftime(timestampStr, sizeof(timestampStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
+  } else {
+    snprintf(timestampStr, sizeof(timestampStr), "ERROR");
+  }
   
   // Debug: Print timestamp to verify NTP is working
   Serial.print("📅 Timestamp: ");
-  Serial.print((unsigned long)timestamp);
-  Serial.print(" ms (");
-  Serial.print(ctime(&now));
-  Serial.print(")");
+  Serial.print(timestampStr);
+  Serial.print(" (");
+  Serial.print((unsigned long)timestampMs);
+  Serial.println(" ms)");
   
   FirebaseJson json;
-  json.add("timestamp", timestamp);
+  json.add("timestamp", timestampMs);
+  json.add("timestampStr", timestampStr);
   json.add("temperature", sensors[SENSOR_BMP280_TEMP].available ? sensors[SENSOR_BMP280_TEMP].lastValue : -999);
   json.add("pressure", sensors[SENSOR_BMP280_PRESSURE].available ? sensors[SENSOR_BMP280_PRESSURE].lastValue : -999);
   json.add("light", sensors[SENSOR_BH1750_LIGHT].available ? sensors[SENSOR_BH1750_LIGHT].lastValue : -999);
@@ -677,12 +757,51 @@ void sendToCloud() {
   
   if (Firebase.setJSON(firebaseData, path.c_str(), json)) {
     Serial.println("✅ Data sent to Firebase successfully");
+    
+    // Increment total readings counter
+    totalReadingsCount++;
+    String counterPath = String("sensors/") + DEVICE_ID + "/stats/totalReadings";
+    Firebase.setInt(firebaseData, counterPath.c_str(), totalReadingsCount);
+    
+    // Update min/max stats
+    String minTempPath = String("sensors/") + DEVICE_ID + "/stats/minTemperature";
+    String maxTempPath = String("sensors/") + DEVICE_ID + "/stats/maxTemperature";
+    Firebase.setFloat(firebaseData, minTempPath.c_str(), minTemperature);
+    Firebase.setFloat(firebaseData, maxTempPath.c_str(), maxTemperature);
+    
+    // Store in history using timestamp as key instead of push (to avoid unlimited growth)
+    String historyPath = String("sensors/") + DEVICE_ID + "/history/" + String((unsigned long)timestampMs);
+    if (Firebase.setJSON(firebaseData, historyPath.c_str(), json)) {
+      Serial.print("📊 History saved (#");
+      Serial.print(totalReadingsCount);
+      Serial.println(")");
+      
+      // Clean up entries older than 24 hours (rolling window)
+      // 24 hours = 86400000 milliseconds
+      unsigned long long cutoffTime = timestampMs - 86400000ULL;
+      
+      // Delete old entries that are beyond the 24h window
+      // We'll delete entries from 25-26 hours ago to keep the database clean
+      if (totalReadingsCount % 12 == 0) {  // Cleanup every hour (12 readings * 5min = 60min)
+        Serial.println("🧹 Running 24h cleanup...");
+        
+        // Delete entries from 25 hours ago
+        unsigned long long oldTimestamp = timestampMs - 90000000ULL;  // 25 hours ago
+        for (int i = 0; i < 12; i++) {  // Delete last hour of old data (12 * 5min)
+          String oldPath = String("sensors/") + DEVICE_ID + "/history/" + String((unsigned long)(oldTimestamp + (i * 300000)));
+          if (Firebase.deleteNode(firebaseData, oldPath.c_str())) {
+            Serial.print("✓");
+          }
+        }
+        Serial.println(" Cleanup complete");
+      }
+    }
   } else {
     Serial.print("❌ Firebase error: ");
     Serial.println(firebaseData.errorReason());
   }
   
-  // Also store in history (optional - for charts)
-  String historyPath = String("sensors/") + DEVICE_ID + "/history/" + String((unsigned long)timestamp);
-  Firebase.setJSON(firebaseData, historyPath.c_str(), json);
+  // LED off - data sent
+  leds[0] = CRGB::Black;
+  FastLED.show();
 }

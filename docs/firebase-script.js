@@ -322,15 +322,18 @@ window.updateRefreshRate = function() {
 };
 
 function updateCharts(data) {
-    // Save current scroll position to prevent auto-scroll
-    const scrollX = window.scrollX;
-    const scrollY = window.scrollY;
-    
     // Don't update charts if timestamp hasn't changed
     if (data.timestamp && data.timestamp === lastTimestamp) {
         console.log('⏭️ Skipping chart update - same timestamp:', lastTimestamp);
         return;
     }
+    
+    // LOCK SCROLL - prevent any scrolling during update
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
     
     if (data.timestamp) {
         console.log('📈 New timestamp:', data.timestamp, 'Previous:', lastTimestamp);
@@ -366,11 +369,6 @@ function updateCharts(data) {
         
         temperatureChart.update('none'); // No animation to prevent flickering
         console.log('✅ Temperature chart updated (', temperatureChart.data.labels.length, 'points)');
-        
-        // Restore scroll AFTER chart renders
-        requestAnimationFrame(() => {
-            window.scrollTo(scrollX, scrollY);
-        });
     }
 
     // Update Pressure Chart - add new point and filter old ones
@@ -386,12 +384,14 @@ function updateCharts(data) {
         
         pressureChart.update('none'); // No animation
         console.log('✅ Pressure chart updated (', pressureChart.data.labels.length, 'points)');
-        
-        // Restore scroll AFTER chart renders
-        requestAnimationFrame(() => {
-            window.scrollTo(scrollX, scrollY);
-        });
     }
+    
+    // UNLOCK SCROLL - restore scroll position and re-enable scrolling
+    setTimeout(() => {
+        window.scrollTo(scrollX, scrollY);
+        document.body.style.overflow = originalOverflow;
+        document.documentElement.style.overflow = '';
+    }, 100);
 }
 
 // ============================================

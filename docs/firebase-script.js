@@ -91,14 +91,16 @@ function initializeCharts() {
 function startFirebaseListeners() {
     console.log('🔥 Starting Firebase listeners...');
     
-    // Listen to current sensor data
-    const sensorsRef = ref(database, 'sensors/ESP32-Greenhouse');
+    // Listen to current sensor data - use 'latest' path
+    const sensorsRef = ref(database, 'sensors/ESP32-Greenhouse/latest');
     onValue(sensorsRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
             console.log('📊 Firebase data:', data);
             updateUI(data);
             updateCharts(data);
+        } else {
+            console.warn('⚠️ No data at latest path');
         }
     }, (error) => {
         console.error('❌ Firebase error:', error);

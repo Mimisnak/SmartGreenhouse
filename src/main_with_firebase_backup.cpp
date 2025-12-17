@@ -1,6 +1,5 @@
 /*
  * Smart Greenhouse - Temperature, Pressure & Light Monitoring
- * LOCAL IP ONLY MODE - No Cloud/Firebase
  */
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
@@ -9,7 +8,7 @@
 #include <BH1750.h>
 #include <Wire.h>
 #include <HTTPClient.h>
-// #include <FirebaseESP32.h>  // DISABLED - Local IP only
+#include <FirebaseESP32.h>
 #include <FastLED.h>
 
 // RGB LED Configuration (WS2812 addressable LED on ESP32-S3)
@@ -42,23 +41,22 @@ SensorInfo sensors[SENSOR_COUNT] = {
   {"Soil Moisture", "%", true, false, 0.0, 0}
 };
 
-// --- Cloud Configuration (DISABLED - Local IP Only) ---
-#define ENABLE_CLOUD_SYNC false  // Cloud sync DISABLED
+// --- Cloud Configuration (Firebase) ---
+#define ENABLE_CLOUD_SYNC true  // Cloud sync enabled for remote access
 
-/*
-// Firebase Configuration (COMMENTED OUT)
+// Firebase Configuration
 #define FIREBASE_HOST "smartgreenhouse-fb494-default-rtdb.firebaseio.com"
-#define FIREBASE_AUTH "AIzaSyDwwszw4AapfTp_dkdli48vsxOZXkZwqfo"
+#define FIREBASE_AUTH "AIzaSyDwwszw4AapfTp_dkdli48vsxOZXkZwqfo"  // Use Web API Key for simple auth
 #define DEVICE_ID "ESP32-Greenhouse"
 
 FirebaseData firebaseData;
 FirebaseConfig firebaseConfig;
 FirebaseAuth firebaseAuth;
-*/
 
-const char* deviceId = "ESP32-Greenhouse";
+const char* cloudApiUrl = "";  // Not used - using Firebase directly
+const char* deviceId = DEVICE_ID;
 unsigned long lastCloudSync = 0;
-#define CLOUD_SYNC_INTERVAL 300000  // 5 minutes (not used in local mode)
+#define CLOUD_SYNC_INTERVAL 30000  // Send data every 30 seconds (for testing, then change to 300000 for 5 min)
 
 // --- Soil Moisture Configuration ---
 // Adjust SOIL_PIN to your actual analog pin. Choose an ADC1 capable pin.
@@ -242,20 +240,17 @@ void setup() {
     timeInitialized = false;
   }
   
-  /*
-  // Firebase Initialization (DISABLED - Local IP Only)
+  // Initialize Firebase
   Serial.println("Initializing Firebase...");
   firebaseConfig.host = FIREBASE_HOST;
   firebaseConfig.signer.tokens.legacy_token = FIREBASE_AUTH;
   Firebase.begin(&firebaseConfig, &firebaseAuth);
   Firebase.reconnectWiFi(true);
   Serial.println("Firebase initialized!");
-  */
-  Serial.println("Cloud sync DISABLED - Local IP only mode");
   
   setupWebServer();
   server.begin();
-  Serial.println("HTTP server started - Access at http://192.168.2.20");
+  Serial.println("HTTP server started");
 }
 
 bool initializeBMP280() {
@@ -712,15 +707,14 @@ void updateSensorRegistry() {
   }
 }
 
-// Send telemetry data to cloud backend (DISABLED - Local IP Only)
+// Send telemetry data to cloud backend
 void sendToCloud() {
-  // FUNCTION DISABLED - No Firebase/Cloud uploads
-  // This system works in LOCAL IP MODE ONLY
-  // Access at: http://192.168.2.20 or via Port Forwarding
-  Serial.println("ℹ️ Cloud sync disabled - running in Local IP only mode");
-  return;
-}
-
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Cloud sync skipped: WiFi not connected");
+    return;
+  }
+  
+  // LED on - indicate sending data (airplane style blink)
   for (int i = 0; i < 3; i++) {
     leds[0] = CRGB::Blue;
     FastLED.show();

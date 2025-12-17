@@ -126,73 +126,67 @@ function startFirebaseListeners() {
 // ============================================
 
 function updateUI(data) {
-    console.log('🔄 Updating UI with:', data);
+    console.log('🔄 [v20251217172200] Updating UI with:', data);
     
-    // Update temperature
+    // FORCE UPDATE - Set values directly
     const tempElement = document.getElementById('temperature');
-    console.log('Temperature element:', tempElement);
-    if (tempElement && data.temperature !== undefined) {
-        const tempValue = data.temperature.toFixed(1) + '°C';
-        tempElement.textContent = tempValue;
-        console.log('✅ Temperature updated to:', tempValue);
+    if (tempElement) {
+        if (data.temperature !== undefined) {
+            tempElement.textContent = data.temperature.toFixed(1) + '°C';
+            console.log('✅ Temperature FORCED to:', tempElement.textContent);
+        }
     } else {
-        console.warn('❌ Temperature element not found or no data');
+        console.error('❌ CRITICAL: temperature element NOT FOUND');
     }
 
-    // Update pressure
     const pressElement = document.getElementById('pressure');
-    console.log('Pressure element:', pressElement);
-    if (pressElement && data.pressure !== undefined) {
-        const pressValue = data.pressure.toFixed(0) + ' hPa';
-        pressElement.textContent = pressValue;
-        console.log('✅ Pressure updated to:', pressValue);
+    if (pressElement) {
+        if (data.pressure !== undefined) {
+            pressElement.textContent = data.pressure.toFixed(0) + ' hPa';
+            console.log('✅ Pressure FORCED to:', pressElement.textContent);
+        }
     } else {
-        console.warn('❌ Pressure element not found or no data');
+        console.error('❌ CRITICAL: pressure element NOT FOUND');
     }
 
-    // Update soil moisture
     const soilElement = document.getElementById('soilMoisture');
-    console.log('Soil element:', soilElement);
-    if (soilElement && data.soilMoisture !== undefined) {
-        const soilValue = data.soilMoisture.toFixed(0) + '%';
-        soilElement.textContent = soilValue;
-        console.log('✅ Soil updated to:', soilValue);
-        
-        // Update soil status
-        const soilStatus = document.getElementById('soilStatus');
-        if (soilStatus) {
-            if (data.soilMoisture < 20) {
-                soilStatus.textContent = '⚠️ Low - Water needed!';
-                soilStatus.className = 'card-status status-warning';
-            } else if (data.soilMoisture < 50) {
-                soilStatus.textContent = '✓ Moderate';
-                soilStatus.className = 'card-status status-good';
-            } else {
-                soilStatus.textContent = '✓ Optimal';
-                soilStatus.className = 'card-status status-excellent';
+    if (soilElement) {
+        if (data.soilMoisture !== undefined) {
+            soilElement.textContent = data.soilMoisture.toFixed(0) + '%';
+            console.log('✅ Soil FORCED to:', soilElement.textContent);
+            
+            const soilStatus = document.getElementById('soilStatus');
+            if (soilStatus) {
+                if (data.soilMoisture < 20) {
+                    soilStatus.textContent = '⚠️ Low';
+                    soilStatus.className = 'card-status status-warning';
+                } else if (data.soilMoisture < 50) {
+                    soilStatus.textContent = '✓ Moderate';
+                    soilStatus.className = 'card-status status-good';
+                } else {
+                    soilStatus.textContent = '✓ Optimal';
+                    soilStatus.className = 'card-status status-excellent';
+                }
             }
         }
     } else {
-        console.warn('❌ Soil element not found or no data');
+        console.error('❌ CRITICAL: soilMoisture element NOT FOUND');
     }
 
-    // Update light (handle N/A)
     const lightElement = document.getElementById('light');
-    console.log('Light element:', lightElement);
     if (lightElement) {
-        if (data.light !== undefined && data.light !== null && data.light >= 0) {
-            const lightValue = data.light.toFixed(0) + ' lux';
-            lightElement.textContent = lightValue;
-            console.log('✅ Light updated to:', lightValue);
+        if (data.light !== undefined && data.light >= 0) {
+            lightElement.textContent = data.light.toFixed(0) + ' lux';
+            console.log('✅ Light FORCED to:', lightElement.textContent);
         } else {
             lightElement.textContent = 'N/A';
             console.log('✅ Light set to N/A');
         }
     } else {
-        console.warn('❌ Light element not found');
+        console.error('❌ CRITICAL: light element NOT FOUND');
     }
     
-    console.log('✅ UI update complete');
+    console.log('✅ [v20251217172200] UI UPDATE COMPLETE');
 }
 
 function updateCharts(data) {

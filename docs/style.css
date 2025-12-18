@@ -1,18 +1,11 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-html {
-    scroll-behavior: auto !important; /* Prevent smooth scrolling */
-    overflow-x: hidden;
-}
-
 body { 
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
     background: linear-gradient(135deg, #8BC34A 0%, #689F38 50%, #558B2F 100%);
     min-height: 100vh;
     animation: backgroundShift 12s ease-in-out infinite;
     line-height: 1.6;
-    scroll-behavior: auto !important; /* Prevent smooth scrolling */
-    overflow-x: hidden;
 }
 
 @keyframes backgroundShift {
@@ -118,6 +111,31 @@ body {
     .theme-selector {
         padding: 12px;
         margin-bottom: 15px;
+    }
+}
+
+/* ESP32 IP Configuration Panel */
+.ip-config-section {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border: 2px solid #ffc107;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 25px rgba(255, 193, 7, 0.2);
+}
+
+.ip-config-section h3 {
+    color: #856404;
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+@media (max-width: 768px) {
+    .ip-config-section {
+        padding: 15px;
+    }
+    .ip-config-section h3 {
+        font-size: 16px;
     }
 }
 

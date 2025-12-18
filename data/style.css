@@ -114,6 +114,31 @@ body {
     }
 }
 
+/* ESP32 IP Configuration Panel */
+.ip-config-section {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border: 2px solid #ffc107;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 25px rgba(255, 193, 7, 0.2);
+}
+
+.ip-config-section h3 {
+    color: #856404;
+    margin-bottom: 10px;
+    font-size: 18px;
+}
+
+@media (max-width: 768px) {
+    .ip-config-section {
+        padding: 15px;
+    }
+    .ip-config-section h3 {
+        font-size: 16px;
+    }
+}
+
 .theme-btn {
     background: linear-gradient(135deg, #66BB6A, #4CAF50);
     color: white;

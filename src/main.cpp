@@ -433,18 +433,42 @@ void setupWebServer() {
   request->send(res);
   });
 
+  // CORS preflight handler for OPTIONS requests
+  server.on("/api", HTTP_OPTIONS, [](AsyncWebServerRequest *request){
+    AsyncWebServerResponse *response = request->beginResponse(204);
+    response->addHeader("Access-Control-Allow-Origin", "*");
+    response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    response->addHeader("Access-Control-Allow-Headers", "Content-Type");
+    request->send(response);
+  });
+  
+  server.on("/history", HTTP_OPTIONS, [](AsyncWebServerRequest *request){
+    AsyncWebServerResponse *response = request->beginResponse(204);
+    response->addHeader("Access-Control-Allow-Origin", "*");
+    response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    response->addHeader("Access-Control-Allow-Headers", "Content-Type");
+    request->send(response);
+  });
+
   server.on("/api", HTTP_GET, [](AsyncWebServerRequest *request){
     JsonDocument doc; 
     doc["temperature"]=temperature; 
     doc["pressure"]=pressure; 
-    doc["light"]= (lightLevel!=-1)?lightLevel:0; 
-    doc["soil"]= (soilMoisture>=0)?soilMoisture:-1; 
+    doc["light"]= lightLevel;  // Send -1 when disconnected, not 0
+    doc["soil"]= soilMoisture;  // Send actual value including -1 or 0
     doc["timestamp"]=millis();
     doc["minTemperature"]=minTemperature;
     doc["maxTemperature"]=maxTemperature;
     doc["totalReadings"]=totalReadingsCount;
+    doc["wifiRSSI"]=WiFi.RSSI();  // WiFi signal strength
     String res; serializeJson(doc,res); 
-    request->send(200,"application/json",res);
+    
+    // Add CORS headers for remote access (GitHub Pages)
+    AsyncWebServerResponse *response = request->beginResponse(200, "application/json", res);
+    response->addHeader("Access-Control-Allow-Origin", "*");
+    response->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    response->addHeader("Access-Control-Allow-Headers", "Content-Type");
+    request->send(response);
     logRequest(request,200);
   });
   server.on("/health", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -548,8 +572,14 @@ void setupWebServer() {
     
     String response;
     serializeJson(doc, response);
+    
+    // Add CORS headers for remote access (GitHub Pages)
+    AsyncWebServerResponse *resp = request->beginResponse(200, "application/json", response);
+    resp->addHeader("Access-Control-Allow-Origin", "*");
+    resp->addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    resp->addHeader("Access-Control-Allow-Headers", "Content-Type");
+    request->send(resp);
     logRequest(request,200);
-    request->send(200, "application/json", response);
   });
   
   server.onNotFound([](AsyncWebServerRequest *request){ logRequest(request,404); request->send(404,"text/plain","File not found"); });
@@ -638,6 +668,9 @@ void addToHistory() {
       historyCount++;
     }
     
+    // Increment total readings counter
+    totalReadingsCount++;
+    
     // Calculate min/max temperature from last 24h of history
     minTemperature = 999.0;
     maxTemperature = -999.0;
@@ -719,95 +752,4 @@ void sendToCloud() {
   // Access at: http://192.168.2.20 or via Port Forwarding
   Serial.println("ℹ️ Cloud sync disabled - running in Local IP only mode");
   return;
-}
-
-  for (int i = 0; i < 3; i++) {
-    leds[0] = CRGB::Blue;
-    FastLED.show();
-    delay(100);
-    leds[0] = CRGB::White;
-    FastLED.show();
-    delay(100);
-  }
-  
-  // Send to Firebase Realtime Database
-  String path = String("sensors/") + DEVICE_ID + "/latest";
-  
-  // Get current Unix timestamp and formatted ISO string
-  time_t now;
-  time(&now);
-  unsigned long long timestampMs = (unsigned long long)now * 1000ULL;
-  
-  struct tm timeinfo;
-  char timestampStr[30];
-  if (getLocalTime(&timeinfo)) {
-    strftime(timestampStr, sizeof(timestampStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
-  } else {
-    snprintf(timestampStr, sizeof(timestampStr), "ERROR");
-  }
-  
-  // Debug: Print timestamp to verify NTP is working
-  Serial.print("📅 Timestamp: ");
-  Serial.print(timestampStr);
-  Serial.print(" (");
-  Serial.print((unsigned long)timestampMs);
-  Serial.println(" ms)");
-  
-  FirebaseJson json;
-  json.add("timestamp", timestampMs);
-  json.add("timestampStr", timestampStr);
-  json.add("temperature", sensors[SENSOR_BMP280_TEMP].available ? sensors[SENSOR_BMP280_TEMP].lastValue : -999);
-  json.add("pressure", sensors[SENSOR_BMP280_PRESSURE].available ? sensors[SENSOR_BMP280_PRESSURE].lastValue : -999);
-  json.add("light", sensors[SENSOR_BH1750_LIGHT].available ? sensors[SENSOR_BH1750_LIGHT].lastValue : -999);
-  json.add("soilMoisture", sensors[SENSOR_SOIL_MOISTURE].available ? sensors[SENSOR_SOIL_MOISTURE].lastValue : -999);
-  
-  if (Firebase.setJSON(firebaseData, path.c_str(), json)) {
-    Serial.println("✅ Data sent to Firebase successfully");
-    
-    // Increment total readings counter
-    totalReadingsCount++;
-    String counterPath = String("sensors/") + DEVICE_ID + "/stats/totalReadings";
-    Firebase.setInt(firebaseData, counterPath.c_str(), totalReadingsCount);
-    
-    // Update min/max stats
-    String minTempPath = String("sensors/") + DEVICE_ID + "/stats/minTemperature";
-    String maxTempPath = String("sensors/") + DEVICE_ID + "/stats/maxTemperature";
-    Firebase.setFloat(firebaseData, minTempPath.c_str(), minTemperature);
-    Firebase.setFloat(firebaseData, maxTempPath.c_str(), maxTemperature);
-    
-    // Store in history using timestamp as key instead of push (to avoid unlimited growth)
-    String historyPath = String("sensors/") + DEVICE_ID + "/history/" + String((unsigned long)timestampMs);
-    if (Firebase.setJSON(firebaseData, historyPath.c_str(), json)) {
-      Serial.print("📊 History saved (#");
-      Serial.print(totalReadingsCount);
-      Serial.println(")");
-      
-      // Clean up entries older than 24 hours (rolling window)
-      // 24 hours = 86400000 milliseconds
-      unsigned long long cutoffTime = timestampMs - 86400000ULL;
-      
-      // Delete old entries that are beyond the 24h window
-      // We'll delete entries from 25-26 hours ago to keep the database clean
-      if (totalReadingsCount % 12 == 0) {  // Cleanup every hour (12 readings * 5min = 60min)
-        Serial.println("🧹 Running 24h cleanup...");
-        
-        // Delete entries from 25 hours ago
-        unsigned long long oldTimestamp = timestampMs - 90000000ULL;  // 25 hours ago
-        for (int i = 0; i < 12; i++) {  // Delete last hour of old data (12 * 5min)
-          String oldPath = String("sensors/") + DEVICE_ID + "/history/" + String((unsigned long)(oldTimestamp + (i * 300000)));
-          if (Firebase.deleteNode(firebaseData, oldPath.c_str())) {
-            Serial.print("✓");
-          }
-        }
-        Serial.println(" Cleanup complete");
-      }
-    }
-  } else {
-    Serial.print("❌ Firebase error: ");
-    Serial.println(firebaseData.errorReason());
-  }
-  
-  // LED off - data sent
-  leds[0] = CRGB::Black;
-  FastLED.show();
 }

@@ -1,3 +1,71 @@
+// ==================== ESP32 IP CONFIGURATION ====================
+// Auto-detect if running locally on ESP32 or remotely (GitHub Pages)
+let ESP32_BASE_URL = '';
+let isLocalMode = false;
+
+function detectAndConfigureESP32() {
+    // Check if running on ESP32 (local) or GitHub Pages (remote)
+    const hostname = window.location.hostname;
+    isLocalMode = hostname.match(/^\d+\.\d+\.\d+\.\d+$/) || hostname === 'localhost';
+    
+    if (isLocalMode) {
+        // Running on ESP32 - use relative URLs
+        ESP32_BASE_URL = '';
+        console.log('✅ Local Mode: Running on ESP32 at ' + window.location.host);
+        hideIPConfig();
+    } else {
+        // Running remotely (GitHub Pages) - need ESP32 IP
+        const savedIP = localStorage.getItem('esp32_ip');
+        if (savedIP) {
+            ESP32_BASE_URL = `http://${savedIP}`;
+            console.log('✅ Remote Mode: Using saved ESP32 IP ' + savedIP);
+        } else {
+            console.warn('⚠️ Remote Mode: ESP32 IP not configured');
+            showIPConfig();
+        }
+    }
+}
+
+function showIPConfig() {
+    const configDiv = document.getElementById('ipConfigSection');
+    if (configDiv) configDiv.style.display = 'block';
+}
+
+function hideIPConfig() {
+    const configDiv = document.getElementById('ipConfigSection');
+    if (configDiv) configDiv.style.display = 'none';
+}
+
+function saveESP32IP() {
+    const ipInput = document.getElementById('esp32IpInput');
+    const ip = ipInput.value.trim();
+    
+    // Validate IP format
+    const ipPattern = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}(:\d+)?$/;
+    if (!ipPattern.test(ip)) {
+        alert('⚠️ Invalid IP format! Use: 192.168.1.100 or 192.168.1.100:80');
+        return;
+    }
+    
+    localStorage.setItem('esp32_ip', ip);
+    ESP32_BASE_URL = `http://${ip}`;
+    hideIPConfig();
+    showNotification(`✅ ESP32 IP saved: ${ip}`, 'success');
+    console.log('✅ ESP32 IP configured:', ESP32_BASE_URL);
+    
+    // Reload data with new IP
+    loadHistoricalData();
+    updateLiveValues();
+}
+
+function clearESP32IP() {
+    localStorage.removeItem('esp32_ip');
+    ESP32_BASE_URL = '';
+    document.getElementById('esp32IpInput').value = '';
+    showIPConfig();
+    showNotification('🗑️ ESP32 IP cleared', 'info');
+}
+
 // Global variables for charts and settings
 let temperatureChart = null;
 let pressureChart = null;
@@ -10,6 +78,7 @@ let dataHistory = {
     light: [],
     timestamps: []
 };
+let soilMoistureHistory = []; // Track last 5 readings to detect unstable sensor
 let currentTheme = 'light';
 let isPlaying = true;
 let refreshRate = 2000;
@@ -18,11 +87,13 @@ let DEBUG_MODE = true; // Set to false to disable debug logs
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
+    detectAndConfigureESP32(); // Detect ESP32 IP or prompt for configuration
     loadSettings();
     initializeCharts();
     createWeatherEffects();
     loadHistoricalData(); // Load historical data on startup
-    updateData();
+    updateLiveValues(); // Initial live values update
+    updateCharts(); // Initial charts update
     startAutoUpdate();
     generatePlantCareRecommendations();
 });
@@ -30,8 +101,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // Load historical data from ESP32 server
 async function loadHistoricalData() {
     try {
-        if (DEBUG_MODE) console.log('🔄 Loading historical data from ESP32...');
-        const response = await fetch('/history');
+        const url = ESP32_BASE_URL + '/history';
+        if (DEBUG_MODE) console.log('🔄 Loading historical data from:', url);
+        const response = await fetch(url);
         
         if (!response.ok) {
             console.warn('No historical data available yet');
@@ -56,8 +128,9 @@ async function loadHistoricalData() {
             for (let i = 0; i < historyData.temperature.length; i++) {
                 dataHistory.temperature.push(historyData.temperature[i]);
                 dataHistory.pressure.push(historyData.pressure[i]);
-                dataHistory.soilMoisture.push(historyData.soil[i] || 0);
-                dataHistory.light.push(historyData.light[i] || 0);
+                // ESP32 sends 'soil' in /history endpoint, not 'soilMoisture'
+                dataHistory.soilMoisture.push(historyData.soil[i] !== undefined ? historyData.soil[i] : 0);
+                dataHistory.light.push(historyData.light[i] !== undefined ? historyData.light[i] : 0);
                 
                 // Convert Unix timestamp (seconds) to JavaScript Date
                 // Timestamps come from ESP32 as Unix timestamps in seconds
@@ -389,9 +462,11 @@ function initializeCharts() {
 }
 
 // Update sensor data and charts
-async function updateData() {
+// Update live sensor values (called every 5 seconds)
+async function updateLiveValues() {
     try {
-        const response = await fetch('/api');
+        const url = ESP32_BASE_URL + '/api';
+        const response = await fetch(url);
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
@@ -402,16 +477,107 @@ async function updateData() {
         // Update status cards displays
         document.getElementById('temperature').textContent = data.temperature + '°C';
         document.getElementById('pressure').textContent = data.pressure + ' hPa';
-        document.getElementById('soilMoisture').textContent = data.soilMoisture + '%';
+        
+        // Track soil moisture history for stability check
+        soilMoistureHistory.push(data.soilMoisture);
+        if (soilMoistureHistory.length > 5) {
+            soilMoistureHistory.shift(); // Keep only last 5 readings
+        }
+        
+        // Check if sensor is unstable (rapid changes indicate disconnected sensor)
+        let isUnstable = false;
+        if (soilMoistureHistory.length >= 3) {
+            // Check if any consecutive readings differ by more than 15%
+            for (let i = 1; i < soilMoistureHistory.length; i++) {
+                const diff = Math.abs(soilMoistureHistory[i] - soilMoistureHistory[i-1]);
+                if (diff > 15) {
+                    isUnstable = true;
+                    break;
+                }
+            }
+        }
+        
+        // Display soil moisture based on stability
+        if (isUnstable) {
+            document.getElementById('soilMoisture').textContent = '--';
+            document.getElementById('soilStatus').textContent = 'ΑΝΕΝΕΡΓΟΣ';
+            document.getElementById('soilStatus').className = 'card-status status-critical';
+        } else {
+            document.getElementById('soilMoisture').textContent = data.soilMoisture + '%';
+            updateStatusIndicator('soilStatus', data.soilMoisture, 40, 80);
+        }
+        
         document.getElementById('light').textContent = data.light + ' lux';
+        
+        // Update status bar with live values
+        const soilDisplay = isUnstable ? '--' : data.soilMoisture + '%';
+        document.getElementById('liveValues').textContent = 
+            `🌡️ ${data.temperature}°C | 🔘 ${data.pressure} hPa | 💧 ${soilDisplay} | ☀️ ${data.light} lux`;
+        
+        // Update WiFi signal strength
+        if (data.wifiRSSI !== undefined) {
+            const rssi = data.wifiRSSI;
+            document.getElementById('wifiSignal').textContent = rssi + ' dBm';
+            // RSSI ranges: Excellent > -50, Good > -60, Fair > -70, Weak > -80, Poor <= -80
+            let wifiStatus = document.getElementById('wifiStatus');
+            if (rssi > -50) {
+                wifiStatus.className = 'card-status status-excellent';
+                wifiStatus.textContent = '📶 Άριστο';
+            } else if (rssi > -60) {
+                wifiStatus.className = 'card-status status-good';
+                wifiStatus.textContent = '📶 Καλό';
+            } else if (rssi > -70) {
+                wifiStatus.className = 'card-status status-warning';
+                wifiStatus.textContent = '⚠️ Μέτριο';
+            } else if (rssi > -80) {
+                wifiStatus.className = 'card-status status-warning';
+                wifiStatus.textContent = '⚠️ Αδύναμο';
+            } else {
+                wifiStatus.className = 'card-status status-critical';
+                wifiStatus.textContent = '❌ Πολύ Αδύναμο';
+            }
+        }
         
         // Update status indicators
         updateStatusIndicator('tempStatus', data.temperature, 18, 28);
         updateStatusIndicator('pressureStatus', data.pressure, 1000, 1030);
-        updateStatusIndicator('soilStatus', data.soilMoisture, 40, 80);
+        // soilStatus already updated above based on 99% check
         updateStatusIndicator('lightStatus', data.light, 200, 2000);
         
-        // Add current data point to charts (real-time update)
+        // Update system info (totalReadings, min/max temp)
+        if (data.totalReadings !== undefined) {
+            document.getElementById('totalReadings').textContent = data.totalReadings;
+        }
+        if (data.minTemperature !== undefined && data.minTemperature < 999) {
+            document.getElementById('minTemp').textContent = data.minTemperature.toFixed(1) + '°C';
+        }
+        if (data.maxTemperature !== undefined && data.maxTemperature > -999) {
+            document.getElementById('maxTemp').textContent = data.maxTemperature.toFixed(1) + '°C';
+        }
+        
+        // Update last update time
+        const now = new Date();
+        document.getElementById('pageLoadTime').textContent = now.toLocaleTimeString('el-GR');
+        document.getElementById('systemStatus').textContent = 'Live ✅';
+    } catch (error) {
+        console.error('Failed to update live values:', error);
+        document.getElementById('systemStatus').textContent = 'Error ❌';
+    }
+}
+
+// Update charts with latest data (called every 6 minutes)
+async function updateCharts() {
+    try {
+        const url = ESP32_BASE_URL + '/api';
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        // Add current data point to charts
         const now = new Date();
         const timeLabel = now.toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' });
         
@@ -427,8 +593,8 @@ async function updateData() {
         dataHistory.light.push(data.light);
         dataHistory.timestamps.push(now.toISOString());
         
-        // Keep only last 100 points in browser memory (rest comes from server history)
-        if (dataHistory.temperature.length > 100) {
+        // Keep only last 96 points in browser memory (48h @ 30min intervals)
+        if (dataHistory.temperature.length > 96) {
             dataHistory.temperature.shift();
             dataHistory.pressure.shift();
             dataHistory.soilMoisture.shift();
@@ -750,16 +916,23 @@ function formatUptime(seconds) {
 }
 
 // Unified startAutoUpdate with history reload every 5 minutes
-let updateInterval = null;
+let liveValuesInterval = null;
+let chartsUpdateInterval = null;
 let historyReloadInterval = null;
 
 function startAutoUpdate() {
     // Stop any existing intervals
-    if (updateInterval) clearInterval(updateInterval);
+    if (liveValuesInterval) clearInterval(liveValuesInterval);
+    if (chartsUpdateInterval) clearInterval(chartsUpdateInterval);
     if (historyReloadInterval) clearInterval(historyReloadInterval);
     
-    // Update data every 5 seconds (real-time updates)
-    updateInterval = setInterval(updateData, 5000);
+    // Update live values every 5 seconds
+    updateLiveValues(); // Initial update
+    liveValuesInterval = setInterval(updateLiveValues, 5000);
+    
+    // Update charts every 5 minutes (300000ms)
+    updateCharts(); // Initial update
+    chartsUpdateInterval = setInterval(updateCharts, 300000);
     
     // Reload historical data every 5 minutes to sync with ESP32
     historyReloadInterval = setInterval(() => {
@@ -767,14 +940,18 @@ function startAutoUpdate() {
         loadHistoricalData();
     }, 300000); // 5 minutes = 300000ms
     
-    if (DEBUG_MODE) console.log('✅ Auto-update started: Data refresh=5s, History reload=5min');
+    if (DEBUG_MODE) console.log('✅ Auto-update started: Live values=5s, Charts=5min, History reload=5min');
 }
 
 // Stop automatic updates
 function stopAutoUpdate() {
-    if (updateInterval) {
-        clearInterval(updateInterval);
-        updateInterval = null;
+    if (liveValuesInterval) {
+        clearInterval(liveValuesInterval);
+        liveValuesInterval = null;
+    }
+    if (chartsUpdateInterval) {
+        clearInterval(chartsUpdateInterval);
+        chartsUpdateInterval = null;
     }
     if (historyReloadInterval) {
         clearInterval(historyReloadInterval);

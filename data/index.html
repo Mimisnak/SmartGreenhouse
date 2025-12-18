@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="style.css?v=2025081101">
+    <link rel="stylesheet" href="style.css?v=20251217211500">
 </head>
 <body>
     <div class="weather-effects" id="weatherEffects"></div>
@@ -27,6 +27,21 @@
             <button class="theme-btn" onclick="setWeather('clear')" title="Clear Weather">☀️ Clear</button>
             <button class="theme-btn" onclick="setWeather('rain')" title="Rainy Weather">🌧️ Rain</button>
             <button class="theme-btn" onclick="setWeather('snow')" title="Snowy Weather">❄️ Snow</button>
+        </div>
+        
+        <!-- ESP32 IP Configuration (for remote access) -->
+        <div id="ipConfigSection" class="ip-config-section" style="display: none;">
+            <h3>🌐 ESP32 Configuration</h3>
+            <p style="color: #666; margin-bottom: 15px;">Enter your ESP32's public/local IP address to connect:</p>
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <input type="text" id="esp32IpInput" placeholder="e.g., 192.168.1.100 or your-public-ip.com" 
+                       style="flex: 1; min-width: 250px; padding: 10px; border: 2px solid #ddd; border-radius: 5px; font-size: 14px;">
+                <button onclick="saveESP32IP()" class="theme-btn" style="background: #28a745;">💾 Save IP</button>
+                <button onclick="clearESP32IP()" class="theme-btn" style="background: #dc3545;">🗑️ Clear</button>
+            </div>
+            <p style="color: #999; font-size: 12px; margin-top: 10px;">
+                💡 Tip: If accessing from internet, make sure to forward port 80 on your router to ESP32
+            </p>
         </div>
         
         <!-- Status Dashboard -->
@@ -53,10 +68,17 @@
             </div>
             
             <div class="status-card">
-                <div class="card-icon">💡</div>
-                <div class="card-title">Light Level</div>
-                <div class="card-value" id="light">---- lux</div>
+                <div class="card-icon">☀️</div>
+                <div class="card-title">Light</div>
+                <div class="card-value" id="light">--- lux</div>
                 <div class="card-status status-excellent" id="lightStatus">Loading...</div>
+            </div>
+            
+            <div class="status-card">
+                <div class="card-icon">📶</div>
+                <div class="card-title">WiFi Signal</div>
+                <div class="card-value" id="wifiSignal">-- dBm</div>
+                <div class="card-status status-excellent" id="wifiStatus">Loading...</div>
             </div>
         </div>
         
@@ -153,13 +175,12 @@
             <h3>🌱 ULTIMATE Smart Greenhouse Monitoring System</h3>
             <p>🚀 Advanced IoT Solution with AI-Powered Plant Care | ESP32-S3 Powered | All Features Enabled</p>
             <p>💻 Developed with Chart.js, ESP32-S3, BMP280 Sensor | 🌐 Hosted on GitHub Pages</p>
-            <p>⚡ Last Update: <span id="pageLoadTime"></span> | 🔋 Status: <span id="systemStatus">Active</span></p>
-        </div>
+            <p>⚡ Τελευταία Ενημέρωση: <span id="pageLoadTime"></span> | <span id="liveValues"></span> | 🔋 Status: <span id="systemStatus">Active</span></p>            <p>📊 <span id="chartsUpdateInfo">Φόρτωση γραφημάτων...</span></p>        </div>
     </div>
     
     <!-- Notification System -->
     <div id="notification" class="notification"></div>
     
-    <script src="script.js"></script>
+    <script src="script.js?v=20251217211500"></script>
 </body>
 </html>

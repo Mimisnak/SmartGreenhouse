@@ -87,6 +87,14 @@ let DEBUG_MODE = true; // Set to false to disable debug logs
 
 // Initialize when page loads
 document.addEventListener('DOMContentLoaded', function() {
+    // ⚠️ CLEAN OLD LOCALSTORAGE DATA (from previous versions)
+    if (localStorage.getItem('dataHistory')) {
+        console.log('🧹 Clearing old LocalStorage data...');
+        localStorage.removeItem('dataHistory');
+        localStorage.removeItem('historyTimestamps');
+        console.log('✅ Old data cleared - will use ESP32 data only');
+    }
+    
     detectAndConfigureESP32(); // Detect ESP32 IP or prompt for configuration
     loadSettings();
     initializeCharts();
@@ -117,7 +125,7 @@ async function loadHistoricalData() {
         }
         
         if (historyData.temperature && historyData.temperature.length > 0) {
-            // Clear existing data
+            // Clear existing data - ALWAYS use ESP32 data (not LocalStorage)
             dataHistory.temperature = [];
             dataHistory.pressure = [];
             dataHistory.soilMoisture = [];
@@ -146,9 +154,9 @@ async function loadHistoricalData() {
             // Update charts with historical data
             updateChartsWithHistory();
             
-            console.log(`✅ Loaded ${historyData.temperature.length} historical data points`);
+            console.log(`✅ Loaded ${historyData.temperature.length} historical data points from ESP32`);
             console.log(`📅 Time range: ${new Date(historyData.timestamps[0] * 1000).toLocaleString()} to ${new Date(historyData.timestamps[historyData.timestamps.length-1] * 1000).toLocaleString()}`);
-            showNotification(`Φορτώθηκαν ${historyData.temperature.length} ιστορικά δεδομένα!`, 'success');
+            showNotification(`✅ Συγχρονισμός: ${historyData.temperature.length} ιστορικά δεδομένα!`, 'success');
         }
         
     } catch (error) {
@@ -1012,3 +1020,209 @@ document.addEventListener('visibilitychange', function() {
 window.addEventListener('beforeunload', function() {
     stopAutoUpdate();
 });
+// ==================== WATERING SYSTEM FUNCTIONS ====================
+
+// Global watering state
+let wateringState = {
+    isWatering: false,
+    autoMode: false,
+    minThreshold: 30,
+    maxThreshold: 90,
+    manualActive: false
+};
+
+// Load watering status (called every 5 seconds with live data)
+async function loadWateringStatus() {
+    try {
+        const url = ESP32_BASE_URL + '/water/status';
+        const response = await fetch(url);
+        
+        if (!response.ok) return;
+        
+        const data = await response.json();
+        wateringState = {
+            isWatering: data.isWatering,
+            autoMode: data.autoMode,
+            minThreshold: data.soilMinThreshold,
+            maxThreshold: data.soilMaxThreshold,
+            manualActive: data.manualWateringActive
+        };
+        
+        // Update UI
+        updateWateringUI();
+        
+    } catch (error) {
+        console.error('Failed to load watering status:', error);
+    }
+}
+
+// Update watering UI based on current state
+function updateWateringUI() {
+    const ledCircle = document.getElementById('ledCircle');
+    const ledLabel = document.getElementById('ledLabel');
+    const pumpStatus = document.getElementById('pumpStatus');
+    const autoStatus = document.getElementById('autoStatus');
+    const autoToggle = document.getElementById('autoWateringToggle');
+    const manualBtn = document.getElementById('manualWaterBtn');
+    const manualStatus = document.getElementById('manualStatus');
+    
+    // Update LED indicator
+    if (wateringState.isWatering) {
+        ledCircle.className = 'led-circle led-green';
+        ledLabel.textContent = 'ΠΟΤΙΣΜΑ';
+        pumpStatus.textContent = '💧 Ενεργό';
+        pumpStatus.className = 'card-status status-excellent';
+    } else {
+        ledCircle.className = 'led-circle led-red';
+        ledLabel.textContent = 'OFF';
+        pumpStatus.textContent = 'Αναμονή';
+        pumpStatus.className = 'card-status status-good';
+    }
+    
+    // Update auto mode status
+    autoToggle.checked = wateringState.autoMode;
+    if (wateringState.autoMode) {
+        autoStatus.textContent = '✅ Ενεργό';
+        autoStatus.className = 'card-status status-excellent';
+    } else {
+        autoStatus.textContent = 'Ανενεργό';
+        autoStatus.className = 'card-status status-warning';
+    }
+    
+    // Update manual button
+    if (wateringState.isWatering) {
+        manualBtn.disabled = true;
+        manualBtn.textContent = '⏳ Πότισμα σε εξέλιξη...';
+        manualStatus.textContent = wateringState.manualActive ? 'Χειροκίνητο (15s)' : 'Αυτόματο';
+    } else {
+        manualBtn.disabled = false;
+        manualBtn.textContent = '💧 Πότισμα Τώρα (15s)';
+        manualStatus.textContent = 'Πατήστε για πότισμα';
+    }
+    
+    // Update threshold inputs
+    document.getElementById('soilMinInput').value = wateringState.minThreshold;
+    document.getElementById('soilMaxInput').value = wateringState.maxThreshold;
+}
+
+// Toggle auto watering mode
+async function toggleAutoWatering() {
+    const enabled = document.getElementById('autoWateringToggle').checked;
+    
+    try {
+        const url = ESP32_BASE_URL + '/water/auto';
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                enabled: enabled,
+                minThreshold: wateringState.minThreshold,
+                maxThreshold: wateringState.maxThreshold
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to toggle auto watering');
+        }
+        
+        const data = await response.json();
+        wateringState.autoMode = data.autoMode;
+        
+        showNotification(
+            enabled ? '✅ Αυτόματο πότισμα ΕΝΕΡΓΟ' : '⏸️ Αυτόματο πότισμα ΑΝΕΝΕΡΓΟ',
+            enabled ? 'success' : 'warning'
+        );
+        
+        updateWateringUI();
+        
+    } catch (error) {
+        console.error('Failed to toggle auto watering:', error);
+        showNotification('❌ Σφάλμα ενεργοποίησης', 'error');
+        // Revert checkbox
+        document.getElementById('autoWateringToggle').checked = !enabled;
+    }
+}
+
+// Update watering thresholds
+async function updateWateringThresholds() {
+    const minThreshold = parseFloat(document.getElementById('soilMinInput').value);
+    const maxThreshold = parseFloat(document.getElementById('soilMaxInput').value);
+    
+    if (minThreshold >= maxThreshold) {
+        showNotification('⚠️ Το ελάχιστο πρέπει να είναι μικρότερο από το μέγιστο!', 'warning');
+        return;
+    }
+    
+    if (minThreshold < 0 || maxThreshold > 100) {
+        showNotification('⚠️ Οι τιμές πρέπει να είναι 0-100%', 'warning');
+        return;
+    }
+    
+    try {
+        const url = ESP32_BASE_URL + '/water/auto';
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                enabled: wateringState.autoMode,
+                minThreshold: minThreshold,
+                maxThreshold: maxThreshold
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to update thresholds');
+        }
+        
+        const data = await response.json();
+        wateringState.minThreshold = data.minThreshold;
+        wateringState.maxThreshold = data.maxThreshold;
+        
+        showNotification(`✅ Όρια ενημερώθηκαν: ${minThreshold}% - ${maxThreshold}%`, 'success');
+        
+    } catch (error) {
+        console.error('Failed to update thresholds:', error);
+        showNotification('❌ Σφάλμα ενημέρωσης ορίων', 'error');
+    }
+}
+
+// Manual watering (15 seconds)
+async function manualWatering() {
+    if (wateringState.isWatering) {
+        showNotification('⚠️ Πότισμα ήδη σε εξέλιξη!', 'warning');
+        return;
+    }
+    
+    try {
+        const url = ESP32_BASE_URL + '/water/manual';
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to start manual watering');
+        }
+        
+        const data = await response.json();
+        showNotification('💧 Χειροκίνητο πότισμα ξεκίνησε (15 δευτερόλεπτα)', 'success');
+        
+        // Immediate UI update
+        wateringState.isWatering = true;
+        wateringState.manualActive = true;
+        updateWateringUI();
+        
+    } catch (error) {
+        console.error('Failed to start manual watering:', error);
+        showNotification('❌ Σφάλμα εκκίνησης ποτίσματος', 'error');
+    }
+}
+
+// Update updateLiveValues to also load watering status
+const originalUpdateLiveValues = updateLiveValues;
+updateLiveValues = async function() {
+    await originalUpdateLiveValues();
+    await loadWateringStatus();
+};
+
+// ==================== END WATERING SYSTEM ====================

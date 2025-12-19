@@ -148,6 +148,64 @@
             </div>
         </div>
         
+        <!-- Water Pump Control -->
+        <div class="watering-section">
+            <h3>💧 Automatic Watering System</h3>
+            <div class="watering-grid">
+                <!-- Status Card -->
+                <div class="status-card watering-card">
+                    <div class="card-icon">💧</div>
+                    <div class="card-title">Water Pump</div>
+                    <div class="pump-indicator">
+                        <div class="led-indicator" id="pumpLED">
+                            <div class="led-circle led-red" id="ledCircle"></div>
+                            <span id="ledLabel">OFF</span>
+                        </div>
+                    </div>
+                    <div class="card-status" id="pumpStatus">Ready</div>
+                </div>
+                
+                <!-- Auto Mode Card -->
+                <div class="status-card watering-card">
+                    <div class="card-icon">🤖</div>
+                    <div class="card-title">Auto Mode</div>
+                    <div class="auto-toggle">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="autoWateringToggle" onchange="toggleAutoWatering()">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="card-status" id="autoStatus">Disabled</div>
+                </div>
+                
+                <!-- Manual Control Card -->
+                <div class="status-card watering-card">
+                    <div class="card-icon">🚿</div>
+                    <div class="card-title">Manual Control</div>
+                    <button class="manual-water-btn" id="manualWaterBtn" onclick="manualWatering()">
+                        💧 Water Now (15s)
+                    </button>
+                    <div class="card-status" id="manualStatus">Click to water</div>
+                </div>
+            </div>
+            
+            <!-- Thresholds Configuration -->
+            <div class="watering-config">
+                <h4>⚙️ Auto Watering Thresholds</h4>
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label for="soilMinInput">🔻 Start Watering Below (%)</label>
+                        <input type="number" id="soilMinInput" class="control-input" value="30" min="0" max="100" onchange="updateWateringThresholds()">
+                    </div>
+                    <div class="control-group">
+                        <label for="soilMaxInput">🔺 Stop Watering Above (%)</label>
+                        <input type="number" id="soilMaxInput" class="control-input" value="90" min="0" max="100" onchange="updateWateringThresholds()">
+                    </div>
+                </div>
+                <p class="config-hint">💡 Pump will start when soil drops below minimum and stop at maximum</p>
+            </div>
+        </div>
+        
         <!-- Plant Care AI -->
         <div class="plant-care">
             <h3>🤖 AI Plant Care Recommendations</h3>

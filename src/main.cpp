@@ -8,6 +8,7 @@
 #include <ArduinoJson.h>
 #include <BH1750.h>
 #include <Wire.h>
+#include <LittleFS.h>
 #include <HTTPClient.h>
 // #include <FirebaseESP32.h>  // DISABLED - Local IP only
 #include <FastLED.h>
@@ -16,6 +17,10 @@
 #define LED_PIN 48
 #define NUM_LEDS 1
 CRGB leds[NUM_LEDS];
+
+// Water Pump Relay Configuration (JQC-3FF-S-Z)
+#define RELAY_PIN 5        // GPIO5 για το relay
+// Το relay module έχει ενσωματωμένα LED indicators στην πλακέτα
 
 // --- Sensor Registry Structure ---
 enum SensorType {
@@ -132,6 +137,15 @@ unsigned long lastHistoryUpdate = 0;
 #define TEMP_LOW_ALERT 10.0        // Alert if temperature < 10°C  
 #define SOIL_LOW_ALERT 20.0        // Alert if soil moisture < 20%
 
+// Watering System Configuration
+bool autoWateringEnabled = false;  // Auto watering mode
+float soilMinThreshold = 30.0;     // Start watering below this %
+float soilMaxThreshold = 90.0;     // Stop watering at this %
+bool isWatering = false;            // Current watering state
+unsigned long wateringStartTime = 0;
+unsigned long manualWateringDuration = 15000;  // 15 seconds for manual watering
+bool manualWateringActive = false;
+
 static const char* httpMethodName(AsyncWebServerRequest *r){
   switch(r->method()){
     case HTTP_GET: return "GET";
@@ -157,13 +171,29 @@ void setupWebServer();
 void checkAlerts();
 void calibrateSoilSensor();
 void addToHistory();
+void startWatering();
+void stopWatering();
+void handleAutoWatering();
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
   
+  // Initialize LittleFS for serving web files
+  if(!LittleFS.begin(true)) {
+    Serial.println("LittleFS Mount Failed");
+    return;
+  }
+  Serial.println("LittleFS Mounted Successfully");
+  
   // Configure soil sensor pin with pull-down to prevent floating
   pinMode(SOIL_PIN, INPUT_PULLDOWN);
+  
+  // Configure water pump relay (module has built-in LED indicators)
+  // Active-HIGH relay: HIGH=ON, LOW=OFF
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, LOW);      // Relay OFF (pump off) - active HIGH
+  Serial.println("Water pump relay initialized (OFF)");
   
   // Initialize I2C Bus 0 for BMP280
   Wire.begin(SDA_PIN, SCL_PIN, 100000);
@@ -385,52 +415,10 @@ void checkAlerts() {
 }
 
 void setupWebServer() {
+  // Serve main page from LittleFS
   server.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
-  float t0 = temperature;
-  float p0 = pressure;
-  float l0 = lightLevel;
-  float s0 = soilMoisture;
-  bool lightAvail = (l0 != -1 && l0 > 0);
-  bool soilAvail  = (s0 >= 0);
-  AsyncResponseStream *res = request->beginResponseStream("text/html");
-  auto esc = [](String v){return v;}; // placeholder if we later need escaping
-  res->print(F("<!DOCTYPE html><html lang='el'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'>"));
-  res->print(F("<title>Smart Greenhouse</title><style>*{margin:0;padding:0;box-sizing:border-box;}body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:linear-gradient(135deg,#8BC34A 0%,#689F38 50%,#558B2F 100%);min-height:100vh;padding:10px;color:#333;overflow-x:hidden;}@keyframes backgroundShift{0%,100%{background:linear-gradient(135deg,#8BC34A 0%,#689F38 50%,#558B2F 100%);}50%{background:linear-gradient(135deg,#4CAF50 0%,#388E3C 50%,#2E7D32 100%);}} .container{max-width:1200px;margin:0 auto;background:rgba(255,255,255,0.95);border-radius:15px;box-shadow:0 8px 25px rgba(46,125,50,0.2);padding:20px;} .header{text-align:center;margin-bottom:25px;position:relative;background:linear-gradient(135deg,#2E7D32,#388E3C,#4CAF50);color:white;padding:20px;border-radius:12px;} .main-title{font-size:2em;margin-bottom:8px;font-weight:700;} .subtitle{font-size:0.95em;margin-bottom:15px;opacity:0.9;} .language-switcher{position:absolute;top:10px;right:10px;display:flex;gap:5px;} .language-btn{padding:5px 10px;border:2px solid rgba(255,255,255,0.3);background:transparent;color:white;border-radius:12px;cursor:pointer;transition:.3s;font-size:11px;font-weight:600;min-height:32px;min-width:36px;} .language-btn.active,.language-btn:hover{background:rgba(255,255,255,0.2);transform:translateY(-1px);} .status-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:15px;margin-bottom:20px;} .card{background:rgba(255,255,255,0.95);border-radius:12px;padding:18px;text-align:center;position:relative;overflow:hidden;transition:.3s;border-left:4px solid #4CAF50;} .card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(76,175,80,0.2);} .card-icon{font-size:2em;margin-bottom:8px;display:block;color:#4CAF50;} .card-title{font-size:0.95em;color:#2E7D32;margin-bottom:5px;font-weight:600;} .card-value{font-size:1.8em;font-weight:700;color:#2E7D32;margin-bottom:2px;} .card-unit{color:#558B2F;font-size:0.85em;margin-bottom:4px;} .card-status{font-size:.75em;font-weight:600;padding:4px 8px;border-radius:10px;display:inline-block;} .ok{background:linear-gradient(135deg,#4CAF50,#66BB6A);color:white;} .na{background:linear-gradient(135deg,#FF9800,#FFB74D);color:white;} .charts-section{margin-top:15px;background:rgba(255,255,255,0.95);border-radius:12px;padding:15px;border-left:4px solid #4CAF50;} .charts-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:15px;} .chart-container{background:white;border-radius:10px;padding:12px;box-shadow:0 3px 12px rgba(76,175,80,0.1);position:relative;border-left:3px solid #4CAF50;} .chart-title{text-align:center;margin-bottom:8px;font-size:0.9em;font-weight:600;color:#2E7D32;} .chart-wrapper{position:relative;height:220px;margin-bottom:6px;} .footer{margin-top:20px;text-align:center;color:white;font-size:0.85em;background:linear-gradient(135deg,#2E7D32,#388E3C);padding:12px;border-radius:10px;} .footer a{color:#C8E6C9;text-decoration:none;font-weight:600;transition:.3s;} .footer a:hover{text-decoration:underline;color:white;} .update-time{color:#A5D6A7;font-size:.75em;margin-top:6px;font-style:italic;} @media (max-width:768px){body{padding:5px;}.container{padding:12px;margin:5px;border-radius:10px;}.header{padding:15px;}.main-title{font-size:1.6em;}.subtitle{font-size:0.9em;}.language-switcher{position:static;justify-content:center;margin-top:10px;}.status-cards{grid-template-columns:1fr;gap:12px;}.card{padding:15px;}.card-icon{font-size:1.8em;}.card-value{font-size:1.6em;}.charts-grid{grid-template-columns:1fr;gap:12px;}.chart-wrapper{height:200px;}.charts-section{padding:12px;}} @media (max-width:480px){.container{padding:8px;}.header{padding:12px;}.main-title{font-size:1.4em;}.card{padding:12px;}.card-icon{font-size:1.6em;}.card-value{font-size:1.4em;}.chart-wrapper{height:180px;}.footer{padding:10px;font-size:0.8em;}}</style></head><body>"));
-  res->print(F("<div class='container'><div class='header'><div class='language-switcher'><button class='language-btn active' onclick='setLanguage(\"el\")' id='btn-el'>EL</button><button class='language-btn' onclick='setLanguage(\"en\")' id='btn-en'>EN</button></div><h1 class='main-title' data-el='Smart Greenhouse' data-en='Smart Greenhouse'>Smart Greenhouse</h1><p class='subtitle' data-el='Σύστημα Παρακολούθησης Φυτών' data-en='Plant Monitoring System'>Σύστημα Παρακολούθησης Φυτών</p></div>"));
-  res->print(F("<div class='status-cards'>"));
-  // Temperature card
-  res->print(F("<div class='card temperature-card'><span class='card-icon'>🌡️</span><div class='card-title' data-el='Θερμοκρασία' data-en='Temperature'>Θερμοκρασία</div><div class='card-value' id='temperature'>"));
-  if(isnan(t0)) res->print(F("--")); else res->print(String(t0,1));
-  res->print(F("</div><div class='card-unit'>°C</div><div class='card-status ok' id='tempStatus' data-el='ΕΝΕΡΓΟΣ' data-en='ACTIVE'>ΕΝΕΡΓΟΣ</div></div>"));
-  // Pressure card
-  res->print(F("<div class='card pressure-card'><span class='card-icon'>📊</span><div class='card-title' data-el='Ατμοσφαιρική Πίεση' data-en='Atmospheric Pressure'>Ατμοσφαιρική Πίεση</div><div class='card-value' id='pressure'>"));
-  if(isnan(p0)) res->print(F("--")); else res->print(String(p0,1));
-  res->print(F("</div><div class='card-unit'>hPa</div><div class='card-status ok' id='pressStatus' data-el='ΕΝΕΡΓΟΣ' data-en='ACTIVE'>ΕΝΕΡΓΟΣ</div></div>"));
-  // Light card
-  res->print(F("<div class='card light-card'><span class='card-icon'>☀️</span><div class='card-title' data-el='Φωτισμός' data-en='Light Level'>Φωτισμός</div><div class='card-value' id='light'>"));
-  if(lightAvail) res->print(String(l0,0)); else res->print(F("--"));
-  res->print(F("</div><div class='card-unit'>lux</div><div class='card-status "));
-  res->print(lightAvail?F("ok' id='lightStatus' data-el='ΕΝΕΡΓΟΣ' data-en='ACTIVE'>ΕΝΕΡΓΟΣ</div></div>"):F("na' id='lightStatus' data-el='ΜΗ ΔΙΑΘΕΣΙΜΟΣ' data-en='UNAVAILABLE'>ΜΗ ΔΙΑΘΕΣΙΜΟΣ</div></div>"));
-  // Soil card
-  res->print(F("<div class='card soil-card'><span class='card-icon'>🌱</span><div class='card-title' data-el='Υγρασία Εδάφους' data-en='Soil Moisture'>Υγρασία Εδάφους</div><div class='card-value' id='soil'>"));
-  if(soilAvail) res->print(String(s0,0)); else res->print(F("--"));
-  res->print(F("</div><div class='card-unit'>%</div><div class='card-status "));
-  res->print(soilAvail?F("ok' id='soilStatus' data-el='ΕΝΕΡΓΟΣ' data-en='ACTIVE'>ΕΝΕΡΓΟΣ</div></div>"):F("na' id='soilStatus' data-el='ΜΗ ΔΙΑΘΕΣΙΜΟΣ' data-en='UNAVAILABLE'>ΜΗ ΔΙΑΘΕΣΙΜΟΣ</div></div>"));
-  res->print(F("</div>")); // status-cards
-  // System Information Section
-  res->print(F("<div class='charts-section' style='margin-top:15px;'><h3 style='color:#2E7D32;margin-bottom:10px;'><span data-el='Πληροφορίες Συστήματος' data-en='System Information'>Πληροφορίες Συστήματος</span></h3><div class='charts-grid' style='grid-template-columns:repeat(auto-fit,minmax(200px,1fr));'><div style='background:white;border-radius:10px;padding:15px;border-left:3px solid #4CAF50;'><div style='color:#2E7D32;font-size:0.85em;margin-bottom:5px;' data-el='Τελευταία Ενημέρωση' data-en='Last Update'>Τελευταία Ενημέρωση</div><div id='systemLastUpdate' style='font-size:1.3em;font-weight:700;color:#2E7D32;'>--</div></div><div style='background:white;border-radius:10px;padding:15px;border-left:3px solid #4CAF50;'><div style='color:#2E7D32;font-size:0.85em;margin-bottom:5px;' data-el='Σύνολο Καταγραφών' data-en='Total Readings'>Σύνολο Καταγραφών</div><div id='totalReadings' style='font-size:1.3em;font-weight:700;color:#2E7D32;'>0</div></div><div style='background:white;border-radius:10px;padding:15px;border-left:3px solid #4CAF50;'><div style='color:#2E7D32;font-size:0.85em;margin-bottom:5px;' data-el='Ελάχιστη Θερμοκρασία' data-en='Min Temperature'>Ελάχιστη Θερμοκρασία</div><div id='minTemp' style='font-size:1.3em;font-weight:700;color:#2E7D32;'>--</div></div><div style='background:white;border-radius:10px;padding:15px;border-left:3px solid #4CAF50;'><div style='color:#2E7D32;font-size:0.85em;margin-bottom:5px;' data-el='Μέγιστη Θερμοκρασία' data-en='Max Temperature'>Μέγιστη Θερμοκρασία</div><div id='maxTemp' style='font-size:1.3em;font-weight:700;color:#2E7D32;'>--</div></div></div></div>"));
-  // Charts
-  res->print(F("<div class='charts-section'><h3 style='color:#2E7D32;margin-bottom:10px;'><span data-el='Ανάλυση Ιστορικών Δεδομένων (24ωρο)' data-en='Historical Data Analysis (24h)'>Ανάλυση Ιστορικών Δεδομένων (24ωρο)</span></h3><div class='charts-grid'>"));
-  res->print(F("<div class='chart-container'><h3 class='chart-title' data-el='Ιστορικό Θερμοκρασίας (24 ώρες)' data-en='Temperature History (24h)'>Ιστορικό Θερμοκρασίας (24 ώρες)</h3><div class='chart-wrapper'><canvas id='tempChart'></canvas></div></div>"));
-  res->print(F("<div class='chart-container'><h3 class='chart-title' data-el='Ιστορικό Πίεσης (24 ώρες)' data-en='Pressure History (24h)'>Ιστορικό Πίεσης (24 ώρες)</h3><div class='chart-wrapper'><canvas id='pressChart'></canvas></div></div>"));
-  res->print(F("<div class='chart-container'><h3 class='chart-title' data-el='Ιστορικό Φωτισμού (24 ώρες)' data-en='Light History (24h)'>Ιστορικό Φωτισμού (24 ώρες)</h3><div class='chart-wrapper'><canvas id='lightChart'></canvas></div></div>"));
-  res->print(F("<div class='chart-container'><h3 class='chart-title' data-el='Ιστορικό Υγρασίας Εδάφους (24 ώρες)' data-en='Soil Moisture History (24h)'>Ιστορικό Υγρασίας Εδάφους (24 ώρες)</h3><div class='chart-wrapper'><canvas id='soilChart'></canvas></div></div>"));
-  res->print(F("</div></div>"));
-  res->print(F("<div class='footer'><p>&copy; 2025 <a href='https://github.com/Mimisnak/SmartGreenhouse' target='_blank'>Smart Greenhouse System</a> | <span data-el='Developer by:' data-en='Developer by:'>Developer by:</span> <a href='https://mimis.dev' target='_blank'>mimis.dev</a></p><div class='update-time' id='lastUpdate' data-el='Τελευταία ενημέρωση: αρχική' data-en='Last update: initial'>Τελευταία ενημέρωση: αρχική</div></div></div>"));
-  // JS with improved sensor disconnection detection and stable colors
-  res->print(F("<script src='https://cdn.jsdelivr.net/npm/chart.js'></script><script>var tempChart=null,pressChart=null,lightChart=null,soilChart=null;var dataHistory={temperature:[],pressure:[],light:[],soil:[],timestamps:[],realTimestamps:[]};var currentLanguage='el',lastUpdateTime=null;const WINDOW_MS=24*60*60*1000;function trimOld(){var now=Date.now();while(dataHistory.realTimestamps.length && now-dataHistory.realTimestamps[0].getTime()>WINDOW_MS){dataHistory.realTimestamps.shift();dataHistory.timestamps.shift();dataHistory.temperature.shift();dataHistory.pressure.shift();dataHistory.light.shift();dataHistory.soil.shift();}}function loadServerHistory(){return fetch('/history').then(r=>r.json()).then(d=>{if(d.temperature && d.temperature.length>0){for(var i=0;i<d.temperature.length;i++){var t=new Date(d.timestamps[i]);dataHistory.realTimestamps.push(t);dataHistory.timestamps.push(t.toLocaleTimeString());dataHistory.temperature.push(d.temperature[i]);dataHistory.pressure.push(d.pressure[i]);dataHistory.light.push(d.light[i]);dataHistory.soil.push(d.soil[i]);lastUpdateTime=t;}}}).catch(e=>{console.log('No server history available')});}function loadStoredData(){var s=localStorage.getItem('greenhouse-data-v2');if(!s)return;try{var arr=JSON.parse(s);var now=Date.now();arr.forEach(it=>{var t=new Date(it.timestamp);if(now-t.getTime()<=WINDOW_MS){var existing=dataHistory.realTimestamps.find(rt=>Math.abs(rt.getTime()-t.getTime())<60000);if(!existing){dataHistory.realTimestamps.push(t);dataHistory.timestamps.push(t.toLocaleTimeString());dataHistory.temperature.push(it.temperature);dataHistory.pressure.push(it.pressure);dataHistory.light.push(it.light);dataHistory.soil.push(it.soil);lastUpdateTime=t;}}});}catch(e){}}function saveData(){try{var out=[];for(var i=0;i<dataHistory.realTimestamps.length;i++){out.push({timestamp:dataHistory.realTimestamps[i].toISOString(),temperature:dataHistory.temperature[i],pressure:dataHistory.pressure[i],light:dataHistory.light[i],soil:dataHistory.soil[i]});}localStorage.setItem('greenhouse-data-v2',JSON.stringify(out));}catch(e){}}function makeChart(ctx,label,color,data){return new Chart(ctx,{type:'line',data:{labels:dataHistory.timestamps,datasets:[{label:label,data:data,borderColor:color,backgroundColor:color.replace('rgb','rgba').replace(')',',0.15)'),tension:.35,fill:true,spanGaps:true}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},animation:{duration:0},scales:{x:{ticks:{maxRotation:0,minRotation:0}}}}});}function initCharts(){tempChart=makeChart(document.getElementById('tempChart').getContext('2d'),'Temperature (°C)','rgb(76,175,80)',dataHistory.temperature);pressChart=makeChart(document.getElementById('pressChart').getContext('2d'),'Pressure (hPa)','rgb(46,125,50)',dataHistory.pressure);lightChart=makeChart(document.getElementById('lightChart').getContext('2d'),'Light (lux)','rgb(139,195,74)',dataHistory.light);soilChart=makeChart(document.getElementById('soilChart').getContext('2d'),'Soil (%)','rgb(102,187,106)',dataHistory.soil);}function refreshCharts(){[tempChart,pressChart,lightChart,soilChart].forEach((c,i)=>{if(!c)return;c.data.labels=dataHistory.timestamps.slice();var arr=i===0?dataHistory.temperature:i===1?dataHistory.pressure:i===2?dataHistory.light:dataHistory.soil;c.data.datasets[0].data=arr.slice();c.update('none');});}function updateData(){fetch('/api').then(r=>r.json()).then(d=>{if(d.temperature>-900 && d.temperature<100){document.getElementById('temperature').textContent=d.temperature.toFixed(1);document.getElementById('tempStatus').className='card-status ok';document.getElementById('tempStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';}else{document.getElementById('temperature').textContent='--';document.getElementById('tempStatus').className='card-status na';document.getElementById('tempStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}if(d.pressure>-900 && d.pressure<2000){document.getElementById('pressure').textContent=d.pressure.toFixed(1);document.getElementById('pressStatus').className='card-status ok';document.getElementById('pressStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';}else{document.getElementById('pressure').textContent='--';document.getElementById('pressStatus').className='card-status na';document.getElementById('pressStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}if(d.light>=0){document.getElementById('light').textContent=d.light.toFixed(0);document.getElementById('lightStatus').className='card-status ok';document.getElementById('lightStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';}else{document.getElementById('light').textContent='--';document.getElementById('lightStatus').className='card-status na';document.getElementById('lightStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}if(d.soil>=0){document.getElementById('soil').textContent=d.soil.toFixed(0);document.getElementById('soilStatus').className='card-status ok';document.getElementById('soilStatus').textContent=currentLanguage==='el'?'ΕΝΕΡΓΟΣ':'ACTIVE';}else{document.getElementById('soil').textContent='--';document.getElementById('soilStatus').className='card-status na';document.getElementById('soilStatus').textContent=currentLanguage==='el'?'ΜΗ ΔΙΑΘΕΣΙΜΟΣ':'UNAVAILABLE';}if(d.totalReadings){document.getElementById('totalReadings').textContent=d.totalReadings;}if(d.minTemperature && d.minTemperature<999){document.getElementById('minTemp').textContent=d.minTemperature.toFixed(1)+'°C';}if(d.maxTemperature && d.maxTemperature>-999){document.getElementById('maxTemp').textContent=d.maxTemperature.toFixed(1)+'°C';}var now=new Date();document.getElementById('systemLastUpdate').textContent=now.toLocaleTimeString(currentLanguage==='el'?'el-GR':'en-US');var existing=dataHistory.realTimestamps.find(rt=>Math.abs(rt.getTime()-now.getTime())<60000);if(!existing){dataHistory.temperature.push(d.temperature>-900?d.temperature:null);dataHistory.pressure.push(d.pressure>-900?d.pressure:null);dataHistory.light.push(d.light>=0?d.light:null);dataHistory.soil.push(d.soil>=0?d.soil:null);dataHistory.realTimestamps.push(now);dataHistory.timestamps.push(now.toLocaleTimeString());trimOld();refreshCharts();saveData();}lastUpdateTime=now;document.getElementById('lastUpdate').textContent=(currentLanguage==='el'?'Τελευταία ενημέρωση: ':'Last update: ')+now.toLocaleString(currentLanguage==='el'?'el-GR':'en-US');}).catch(e=>{});}function setLanguage(lang){currentLanguage=lang;document.querySelectorAll('.language-btn').forEach(b=>b.classList.remove('active'));document.getElementById('btn-'+lang).classList.add('active');document.querySelectorAll('[data-'+lang+']').forEach(el=>{el.textContent=el.getAttribute('data-'+lang)});if(lastUpdateTime){document.getElementById('lastUpdate').textContent=(currentLanguage==='el'?'Τελευταία ενημέρωση: ':'Last update: ')+lastUpdateTime.toLocaleString(currentLanguage==='el'?'el-GR':'en-US')}localStorage.setItem('preferred-language',lang);}window.onload=function(){document.body.style.animation='none';document.body.style.background='linear-gradient(135deg,#8BC34A 0%,#689F38 50%,#558B2F 100%)';var savedLang=localStorage.getItem('preferred-language')||'el';setLanguage(savedLang);loadServerHistory().then(()=>{loadStoredData();dataHistory.realTimestamps.sort((a,b)=>a.getTime()-b.getTime());dataHistory.timestamps=dataHistory.realTimestamps.map(t=>t.toLocaleTimeString());initCharts();refreshCharts();updateData();setInterval(updateData,5000);});}</script></body></html>"));
-  logRequest(request,200);
-  request->send(res);
+    logRequest(request, 200);
+    request->send(LittleFS, "/index.html", "text/html");
   });
 
   // CORS preflight handler for OPTIONS requests
@@ -535,6 +523,109 @@ void setupWebServer() {
     logRequest(request,200);
     request->send(200, "text/plain; version=0.0.4", m);
   });
+  
+  // ==================== WATERING API ENDPOINTS ====================
+  
+  // Get watering status
+  server.on("/water/status", HTTP_GET, [](AsyncWebServerRequest *request){
+    StaticJsonDocument<256> doc;
+    doc["isWatering"] = isWatering;
+    doc["autoEnabled"] = autoWateringEnabled;
+    doc["minThreshold"] = soilMinThreshold;
+    doc["maxThreshold"] = soilMaxThreshold;
+    doc["currentSoilMoisture"] = soilMoisture;
+    doc["manualWateringActive"] = manualWateringActive;
+    
+    String response;
+    serializeJson(doc, response);
+    
+    AsyncWebServerResponse *resp = request->beginResponse(200, "application/json", response);
+    resp->addHeader("Access-Control-Allow-Origin", "*");
+    request->send(resp);
+    logRequest(request, 200);
+  });
+  
+  // Enable/Disable auto watering
+  server.on("/water/auto", HTTP_POST, [](AsyncWebServerRequest *request){}, NULL, 
+  [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total){
+    StaticJsonDocument<256> doc;
+    DeserializationError error = deserializeJson(doc, data, len);
+    
+    if (error) {
+      request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+      return;
+    }
+    
+    if (doc.containsKey("enabled")) {
+      autoWateringEnabled = doc["enabled"];
+      Serial.printf("Auto watering %s\n", autoWateringEnabled ? "ENABLED" : "DISABLED");
+    }
+    if (doc.containsKey("minThreshold")) {
+      soilMinThreshold = doc["minThreshold"];
+      Serial.printf("Min threshold set to %.1f%%\n", soilMinThreshold);
+    }
+    if (doc.containsKey("maxThreshold")) {
+      soilMaxThreshold = doc["maxThreshold"];
+      Serial.printf("Max threshold set to %.1f%%\n", soilMaxThreshold);
+    }
+    
+    StaticJsonDocument<128> response;
+    response["success"] = true;
+    response["autoMode"] = autoWateringEnabled;
+    response["minThreshold"] = soilMinThreshold;
+    response["maxThreshold"] = soilMaxThreshold;
+    
+    String res;
+    serializeJson(response, res);
+    
+    AsyncWebServerResponse *resp = request->beginResponse(200, "application/json", res);
+    resp->addHeader("Access-Control-Allow-Origin", "*");
+    request->send(resp);
+    logRequest(request, 200);
+  });
+  
+  // OPTIONS for CORS preflight
+  server.on("/water/auto", HTTP_OPTIONS, [](AsyncWebServerRequest *request){
+    AsyncWebServerResponse *response = request->beginResponse(204);
+    response->addHeader("Access-Control-Allow-Origin", "*");
+    response->addHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    response->addHeader("Access-Control-Allow-Headers", "Content-Type");
+    request->send(response);
+  });
+  
+  // Manual watering (15 seconds)
+  server.on("/water/manual", HTTP_POST, [](AsyncWebServerRequest *request){
+    if (!manualWateringActive && !isWatering) {
+      manualWateringActive = true;
+      startWatering();
+      Serial.println("🚿 Manual watering started (15s timer)");
+      
+      StaticJsonDocument<128> response;
+      response["success"] = true;
+      response["message"] = "Manual watering started (15s)";
+      
+      String res;
+      serializeJson(response, res);
+      
+      AsyncWebServerResponse *resp = request->beginResponse(200, "application/json", res);
+      resp->addHeader("Access-Control-Allow-Origin", "*");
+      request->send(resp);
+      logRequest(request, 200);
+    } else {
+      request->send(400, "application/json", "{\"error\":\"Watering already active\"}");
+      logRequest(request, 400);
+    }
+  });
+  
+  // OPTIONS for CORS preflight
+  server.on("/water/manual", HTTP_OPTIONS, [](AsyncWebServerRequest *request){
+    AsyncWebServerResponse *response = request->beginResponse(204);
+    response->addHeader("Access-Control-Allow-Origin", "*");
+    response->addHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    response->addHeader("Access-Control-Allow-Headers", "Content-Type");
+    request->send(response);
+  });
+
   // Calibration helper endpoint
   server.on("/calibrate", HTTP_GET, [](AsyncWebServerRequest *request){
     String html = "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Soil Calibration</title>";
@@ -585,6 +676,53 @@ void setupWebServer() {
   server.onNotFound([](AsyncWebServerRequest *request){ logRequest(request,404); request->send(404,"text/plain","File not found"); });
 }
 
+// ==================== WATERING SYSTEM FUNCTIONS ====================
+
+// Start/Stop water pump
+void startWatering() {
+  if (!isWatering) {
+    digitalWrite(RELAY_PIN, HIGH);       // Turn ON relay (pump ON) - active HIGH
+    isWatering = true;
+    wateringStartTime = millis();
+    Serial.println("💧 WATERING STARTED - Relay ON (active HIGH)");
+  }
+}
+
+void stopWatering() {
+  if (isWatering) {
+    digitalWrite(RELAY_PIN, LOW);        // Turn OFF relay (pump OFF) - active HIGH
+    isWatering = false;
+    manualWateringActive = false;
+    Serial.println("🛑 WATERING STOPPED - Relay OFF (active HIGH)");
+  }
+}
+
+// Automatic watering logic
+void handleAutoWatering() {
+  // Handle manual watering timer (15 seconds)
+  if (manualWateringActive) {
+    if (millis() - wateringStartTime >= manualWateringDuration) {
+      Serial.println("⏱️ Manual watering timer expired (15s)");
+      stopWatering();
+    }
+    return; // Skip auto logic during manual watering
+  }
+  
+  // Auto watering logic
+  if (autoWateringEnabled && soilMoisture >= 0) {
+    if (!isWatering && soilMoisture < soilMinThreshold) {
+      Serial.printf("🌱 Soil too dry (%.1f%% < %.1f%%), starting auto watering\n", 
+                    soilMoisture, soilMinThreshold);
+      startWatering();
+    }
+    else if (isWatering && soilMoisture >= soilMaxThreshold) {
+      Serial.printf("✅ Soil optimal (%.1f%% >= %.1f%%), stopping auto watering\n", 
+                    soilMoisture, soilMaxThreshold);
+      stopWatering();
+    }
+  }
+}
+
 void loop() {
   // Check BMP280 sensor connection
   float newTemp = bmp.readTemperature();
@@ -621,6 +759,9 @@ void loop() {
   // Calibration and alerts
   calibrateSoilSensor();
   checkAlerts();
+  
+  // Automatic watering control
+  handleAutoWatering();
   
   // Cloud sync (if enabled)
   if (ENABLE_CLOUD_SYNC && millis() - lastCloudSync > CLOUD_SYNC_INTERVAL) {

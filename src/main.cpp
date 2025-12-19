@@ -48,7 +48,12 @@ SensorInfo sensors[SENSOR_COUNT] = {
 };
 
 // --- Cloud Configuration (DISABLED - Local IP Only) ---
-#define ENABLE_CLOUD_SYNC false  // Cloud sync DISABLED
+#define ENABLE_CLOUD_SYNC false  // Set to true to enable remote data transmission
+
+// 🌐 Remote Public IP Configuration (για Red LED indicator)
+// Βάλτε το public IP server σας εδώ αν θέλετε να στέλνετε δεδομένα
+const char* REMOTE_PUBLIC_IP = "";  // π.χ. "http://your-public-ip.com/api/data"
+#define REMOTE_SYNC_INTERVAL 60000  // Send every 60 seconds (1 minute)
 
 /*
 // Firebase Configuration (COMMENTED OUT)
@@ -63,6 +68,7 @@ FirebaseAuth firebaseAuth;
 
 const char* deviceId = "ESP32-Greenhouse";
 unsigned long lastCloudSync = 0;
+unsigned long lastRemoteAttempt = 0;  // For remote public IP transmission tracking
 #define CLOUD_SYNC_INTERVAL 300000  // 5 minutes (not used in local mode)
 
 // --- Soil Moisture Configuration ---
@@ -146,6 +152,22 @@ unsigned long wateringStartTime = 0;
 unsigned long manualWateringDuration = 15000;  // 15 seconds for manual watering
 bool manualWateringActive = false;
 
+// LED Status Indicators
+enum LEDStatus {
+  LED_STATUS_LOCAL_OK,      // Blue blinking - WiFi connected, local network OK
+  LED_STATUS_REMOTE_OK,     // Red blinking - Sending to public IP successfully  
+  LED_STATUS_BOTH_OK,       // Purple blinking - Both local and remote OK
+  LED_STATUS_LOCAL_ERROR,   // No blue - Local network problem
+  LED_STATUS_REMOTE_ERROR,  // No red - Public IP transmission error
+  LED_STATUS_BOTH_ERROR     // Black - Both failed
+};
+LEDStatus currentLEDStatus = LED_STATUS_LOCAL_OK;
+unsigned long lastLEDUpdate = 0;
+bool ledBlinkState = false;
+bool remoteTransmissionOK = false;
+unsigned long lastRemoteTransmission = 0;
+#define REMOTE_TRANSMISSION_TIMEOUT 70000  // 70 seconds (if no transmission, show error)
+
 static const char* httpMethodName(AsyncWebServerRequest *r){
   switch(r->method()){
     case HTTP_GET: return "GET";
@@ -174,6 +196,7 @@ void addToHistory();
 void startWatering();
 void stopWatering();
 void handleAutoWatering();
+void updateLEDStatus();
 
 void setup() {
   Serial.begin(115200);
@@ -189,11 +212,13 @@ void setup() {
   // Configure soil sensor pin with pull-down to prevent floating
   pinMode(SOIL_PIN, INPUT_PULLDOWN);
   
-  // Configure water pump relay (module has built-in LED indicators)
+  // 🔧 FIX: Configure water pump relay EARLY to prevent unwanted activation during boot
+  // Set OUTPUT mode AND set LOW immediately to ensure relay stays OFF
   // Active-HIGH relay: HIGH=ON, LOW=OFF
-  pinMode(RELAY_PIN, OUTPUT);
-  digitalWrite(RELAY_PIN, LOW);      // Relay OFF (pump off) - active HIGH
-  Serial.println("Water pump relay initialized (OFF)");
+  digitalWrite(RELAY_PIN, LOW);      // Set LOW FIRST (before pinMode to avoid glitch)
+  pinMode(RELAY_PIN, OUTPUT);        // Then set as OUTPUT
+  digitalWrite(RELAY_PIN, LOW);      // Set LOW AGAIN to be absolutely sure
+  Serial.println("⚡ Water pump relay initialized (OFF - boot-safe)");
   
   // Initialize I2C Bus 0 for BMP280
   Wire.begin(SDA_PIN, SCL_PIN, 100000);
@@ -247,8 +272,8 @@ void setup() {
   // Initial soil moisture read (will stay -1 if pin not connected / invalid)
   soilMoisture = readSoilMoisturePercent();
   
-  // Initialize RGB LED (WS2812)
-  FastLED.addLeds<WS2812, LED_PIN, RGB>(leds, NUM_LEDS);  // Changed to RGB color order
+  // Initialize RGB LED (WS2812 - GRB color order!)
+  FastLED.addLeds<WS2812, LED_PIN, GRB>(leds, NUM_LEDS);  // WS2812 uses GRB, not RGB!
   FastLED.setBrightness(50);  // 50/255 brightness
   leds[0] = CRGB::Black;  // Off initially
   FastLED.show();
@@ -256,7 +281,11 @@ void setup() {
   WiFi.begin(ssid, password);
   Serial.print("Connecting to WiFi");
   while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print("."); }
-  Serial.println(); Serial.println("WiFi connected!"); Serial.print("IP address: "); Serial.println(WiFi.localIP());
+  Serial.println();
+  Serial.println("🔵 LED Status: LOCAL OK (Blue blinking)");
+  currentLEDStatus = LED_STATUS_LOCAL_OK;
+  leds[0] = CRGB::Blue;
+  FastLED.show();
   
   // Initialize NTP for accurate timestamps
   Serial.println("Initializing NTP time...");
@@ -559,6 +588,13 @@ void setupWebServer() {
     if (doc.containsKey("enabled")) {
       autoWateringEnabled = doc["enabled"];
       Serial.printf("Auto watering %s\n", autoWateringEnabled ? "ENABLED" : "DISABLED");
+      
+      // 🔧 FIX: Όταν απενεργοποιείται το auto watering, σταμάτα αμέσως την αντλία
+      if (!autoWateringEnabled && isWatering) {
+        isWatering = false;
+        digitalWrite(RELAY_PIN, LOW);  // Απενεργοποίηση relay (LOW = OFF για active HIGH relay)
+        Serial.println("🛑 Auto watering DISABLED - Pump turned OFF");
+      }
     }
     if (doc.containsKey("minThreshold")) {
       soilMinThreshold = doc["minThreshold"];
@@ -763,7 +799,44 @@ void loop() {
   // Automatic watering control
   handleAutoWatering();
   
-  // Cloud sync (if enabled)
+  // Update LED status based on network conditions
+  updateLEDStatus();
+  
+  // 🔴 Remote Public IP transmission (if configured)
+  if (strlen(REMOTE_PUBLIC_IP) > 0 && millis() - lastRemoteAttempt >= REMOTE_SYNC_INTERVAL) {
+    lastRemoteAttempt = millis();
+    
+    HTTPClient http;
+    http.begin(REMOTE_PUBLIC_IP);
+    http.addHeader("Content-Type", "application/json");
+    
+    // Build JSON payload
+    StaticJsonDocument<512> doc;
+    doc["device"] = deviceId;
+    doc["temperature"] = temperature;
+    doc["pressure"] = pressure;
+    doc["light"] = lightLevel;
+    doc["soil"] = soilMoisture;
+    doc["timestamp"] = millis();
+    
+    String payload;
+    serializeJson(doc, payload);
+    
+    int httpCode = http.POST(payload);
+    
+    if (httpCode == 200 || httpCode == 201) {
+      remoteTransmissionOK = true;
+      lastRemoteTransmission = millis();
+      Serial.printf("🔴 Remote transmission OK (HTTP %d)\\n", httpCode);
+    } else {
+      remoteTransmissionOK = false;
+      Serial.printf("💥 Remote transmission FAILED (HTTP %d)\\n", httpCode);
+    }
+    
+    http.end();
+  }
+  
+  // Cloud sync (if enabled - Firebase/other)
   if (ENABLE_CLOUD_SYNC && millis() - lastCloudSync > CLOUD_SYNC_INTERVAL) {
     sendToCloud();
     lastCloudSync = millis();
@@ -785,6 +858,99 @@ void loop() {
     Serial.println(", Soil: N/A");
   }
   delay(500);
+}
+
+// 🚦 LED Status Indicator System
+void updateLEDStatus() {
+  unsigned long currentTime = millis();
+  
+  // Check WiFi connection status
+  bool wifiConnected = (WiFi.status() == WL_CONNECTED);
+  
+  // Check if remote transmission is recent (within last 70 seconds)
+  bool remoteActive = (currentTime - lastRemoteTransmission < REMOTE_TRANSMISSION_TIMEOUT);
+  
+  // Determine LED status based on both local and remote
+  LEDStatus newStatus;
+  
+  if (!wifiConnected) {
+    if (remoteActive && remoteTransmissionOK) {
+      newStatus = LED_STATUS_REMOTE_ERROR;  // Remote was OK but WiFi lost
+    } else {
+      newStatus = LED_STATUS_BOTH_ERROR;    // Both failed
+    }
+  } else if (remoteActive && remoteTransmissionOK) {
+    newStatus = LED_STATUS_BOTH_OK;         // Both working - PURPLE blinking
+  } else if (remoteActive && !remoteTransmissionOK) {
+    newStatus = LED_STATUS_REMOTE_ERROR;    // Remote failed - no red
+  } else {
+    newStatus = LED_STATUS_LOCAL_OK;        // Only local - BLUE blinking
+  }
+  
+  // Update LED if status changed
+  if (newStatus != currentLEDStatus) {
+    currentLEDStatus = newStatus;
+    switch(newStatus) {
+      case LED_STATUS_LOCAL_OK:
+        Serial.println("🔵 LED: LOCAL OK (Blue blinking)");
+        break;
+      case LED_STATUS_REMOTE_OK:
+        Serial.println("🔴 LED: REMOTE OK (Red blinking)");
+        break;
+      case LED_STATUS_BOTH_OK:
+        Serial.println("💜 LED: BOTH OK (Purple blinking)");
+        break;
+      case LED_STATUS_LOCAL_ERROR:
+        Serial.println("💥 LED: LOCAL ERROR (No blue)");
+        break;
+      case LED_STATUS_REMOTE_ERROR:
+        Serial.println("💥 LED: REMOTE ERROR (No red)");
+        break;
+      case LED_STATUS_BOTH_ERROR:
+        Serial.println("⚫ LED: BOTH ERROR (Off)");
+        break;
+    }
+  }
+  
+  // Update LED every 500ms (for blinking effect)
+  if (currentTime - lastLEDUpdate >= 500) {
+    lastLEDUpdate = currentTime;
+    ledBlinkState = !ledBlinkState;
+    
+    switch(currentLEDStatus) {
+      case LED_STATUS_LOCAL_OK:
+        // 🔵 Blue blinking - WiFi OK, local network working
+        leds[0] = ledBlinkState ? CRGB::Blue : CRGB::Black;
+        break;
+        
+      case LED_STATUS_REMOTE_OK:
+        // 🔴 Red blinking - Remote transmission OK
+        leds[0] = ledBlinkState ? CRGB::Red : CRGB::Black;
+        break;
+        
+      case LED_STATUS_BOTH_OK:
+        // 💜 Purple blinking - Both local and remote OK
+        leds[0] = ledBlinkState ? CRGB(128, 0, 128) : CRGB::Black;  // Purple
+        break;
+        
+      case LED_STATUS_LOCAL_ERROR:
+        // ⚫ No blue - WiFi/local problem (show red if remote still OK)
+        leds[0] = ledBlinkState ? CRGB::Red : CRGB::Black;
+        break;
+        
+      case LED_STATUS_REMOTE_ERROR:
+        // ⚫ No red - Remote problem (show blue if local still OK)
+        leds[0] = ledBlinkState ? CRGB::Blue : CRGB::Black;
+        break;
+        
+      case LED_STATUS_BOTH_ERROR:
+        // ⚫ Off - Both failed
+        leds[0] = CRGB::Black;
+        break;
+    }
+    
+    FastLED.show();
+  }
 }
 
 void addToHistory() {
